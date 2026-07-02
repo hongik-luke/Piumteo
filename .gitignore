@@ -1,0 +1,55 @@
+# Repository-local tools and IDE state
+.git/
+.agent/
+.agents/
+.codex/
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Temporary legacy backend copy
+/demo/
+
+# Environment variables and local secrets
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+**/src/main/resources/application-local.yml
+**/application-local.yml
+
+# Java / Spring / Gradle
+**/.gradle/
+**/build/
+**/out/
+**/bin/
+!**/src/main/**/build/
+!**/src/test/**/build/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# Gradle wrapper must stay tracked
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Frontend dependencies and build output
+**/node_modules/
+**/dist/
+**/.vite/
+**/.next/
+**/coverage/
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+*.seed
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
