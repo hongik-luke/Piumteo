@@ -30,6 +30,8 @@ function markerToPlace(marker: PlaceMarkerResponse): Place {
     likes: 0,
     dislikes: 0,
     commentCount: 0,
+    latitude: marker.latitude,
+    longitude: marker.longitude,
     x: 50,
     y: 50,
   };
@@ -45,6 +47,8 @@ function detailToPlace(detail: PlaceDetailResponse): Place {
     likes: detail.likeCount,
     dislikes: detail.dislikeCount,
     commentCount: detail.commentCount,
+    latitude: detail.latitude,
+    longitude: detail.longitude,
     x: 50,
     y: 50,
     ownedByMe: detail.isOwner,

@@ -28,6 +28,7 @@ import { reactPlaceAsGuest, reactPlaceAsMember } from "@/apis/reaction/reaction.
 import { PasswordModal, PlaceDeleteModal } from "@/components/feedback/Overlays";
 import { BottomSheetSkeleton } from "@/components/common/LoadingSkeletons";
 import { PLACE_CFG } from "@/constants/place.constants";
+import { buildNaverWalkRouteUrl } from "@/libs/naver-map/naverMapUrls";
 import type { CommentMutationResponse, ReactionSummaryResponse } from "@/types/api";
 import type { Comment, Place, Reaction, SheetState, ToastType } from "@/types/domain";
 import { apiReactionToDomain, commentResponseToDomain, domainReactionToApi } from "@/utils/mappers/apiMappers";
@@ -307,6 +308,14 @@ export function PlaceDetailSheet({
     void handleMemberDelete(target);
   }
 
+  function handleOpenDirections() {
+    window.location.href = buildNaverWalkRouteUrl({
+      destinationLat: place.latitude,
+      destinationLng: place.longitude,
+      destinationName: place.name,
+    });
+  }
+
   return (
     <>
       <motion.div
@@ -423,7 +432,7 @@ export function PlaceDetailSheet({
                 <span>{dislikeCount}</span>
               </motion.button>
               <button
-                onClick={() => addToast("info", "길찾기 기능은 아직 연결되지 않았습니다.")}
+                onClick={handleOpenDirections}
                 className="ml-auto flex items-center gap-1.5 px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-[13px] font-bold text-gray-600 hover:border-gray-300 transition-all whitespace-nowrap"
                 type="button"
               >
