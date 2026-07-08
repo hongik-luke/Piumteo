@@ -3,7 +3,7 @@ import markerImplicitSmokingArea from "@/assets/icons/marker-implicit-smoking-ar
 import markerNonSmokingArea from "@/assets/icons/marker-non-smoking-area-bgclean.png";
 import markerSmokingArea from "@/assets/icons/marker-smoking-area-bgclean.png";
 import markerSmokingBooth from "@/assets/icons/marker-smoking-booth-bgclean.png";
-import { loadNaverMapScript } from "@/lib/naverMapLoader";
+import { loadNaverMapScript } from "@/libs/naver-map/naverMapLoader";
 import type { PlaceMarkerResponse, PlaceType } from "@/types/api";
 
 export interface MapLatLng {
@@ -210,7 +210,7 @@ export function NaverMapCanvas({
       }
     }
 
-    initMap();
+    void initMap();
 
     return () => {
       cancelled = true;

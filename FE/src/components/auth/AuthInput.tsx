@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, XCircle } from "lucide-react";
-import { cn } from "@/utils/common";
+import { cn } from "@/utils/cn";
 
 export function AuthInput({
   label,
@@ -32,7 +32,7 @@ export function AuthInput({
   status?: "ok" | "error" | null;
 }) {
   const [show, setShow] = useState(false);
-  const isPw = type === "password";
+  const isPassword = type === "password";
 
   return (
     <div>
@@ -40,29 +40,35 @@ export function AuthInput({
       <div className="flex gap-2">
         <div className="relative flex-1">
           <input
-            type={isPw && !show ? "password" : "text"}
+            type={isPassword && !show ? "password" : "text"}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(event) => onChange(event.target.value)}
             onBlur={onBlur}
             placeholder={placeholder}
             className={cn(
               "w-full px-4 py-3 rounded-2xl border bg-gray-50 text-[13px] focus:outline-none focus:ring-2 transition-all",
-              isPw ? "pr-11" : status === "ok" ? "pr-10" : "",
-              error ? "border-red-300 focus:ring-red-200 bg-red-50" : "border-gray-200 focus:ring-blue-200 focus:border-blue-400",
+              isPassword ? "pr-11" : status === "ok" ? "pr-10" : "",
+              error
+                ? "border-red-300 focus:ring-red-200 bg-red-50"
+                : "border-gray-200 focus:ring-blue-200 focus:border-blue-400",
             )}
           />
-          {isPw && (
+          {isPassword && (
             <button
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-              onClick={() => setShow(!show)}
+              onClick={() => setShow((prev) => !prev)}
               type="button"
               aria-label={show ? "비밀번호 숨기기" : "비밀번호 보기"}
             >
               {show ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           )}
-          {!isPw && status === "ok" && <CheckCircle2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500" />}
-          {!isPw && status === "error" && <XCircle size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-red-400" />}
+          {!isPassword && status === "ok" && (
+            <CheckCircle2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500" />
+          )}
+          {!isPassword && status === "error" && (
+            <XCircle size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-red-400" />
+          )}
         </div>
         {action && onAction && (
           <button
