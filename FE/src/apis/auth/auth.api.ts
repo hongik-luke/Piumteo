@@ -1,5 +1,5 @@
-import { apiRequest } from "./client";
-import { API_ENDPOINTS } from "./endpoints";
+import { apiRequest } from "@/apis/client/apiClient";
+import { API_ENDPOINTS } from "@/apis/endpoints";
 import type {
   AuthResponse,
   CheckEmailRequest,

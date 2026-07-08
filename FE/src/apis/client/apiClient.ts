@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "@/config";
 import type { ApiResponse } from "@/types/api";
-import { notifyAuthExpired } from "@/utils/authEvents";
-import { clearAuthSession, getOrCreateGuestKey, getStoredAccessToken } from "@/utils/clientState";
+import { notifyAuthExpired } from "@/app/authEvents";
+import { clearAuthSession, getOrCreateGuestKey, getStoredAccessToken } from "@/utils/storage/clientState";
 
 export type ApiAuthMode = "none" | "member" | "guest" | "auto";
 

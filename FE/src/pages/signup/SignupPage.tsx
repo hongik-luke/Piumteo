@@ -1,21 +1,22 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, XCircle } from "lucide-react";
-import { checkEmail as checkEmailApi, checkNickname as checkNicknameApi, signup } from "@/apis/auth";
-import { ApiError } from "@/apis/client";
+import { checkEmail as checkEmailApi, checkNickname as checkNicknameApi, signup } from "@/apis/auth/auth.api";
+import { ApiError } from "@/apis/client/apiClient";
+import type { Screen } from "@/app/screen";
 import { AuthInput } from "@/components/auth/AuthInput";
-import type { AuthSession, Screen } from "@/types/domain";
-import { authResponseToSession } from "@/utils/apiMappers";
+import type { AuthSession } from "@/types/domain";
+import { authResponseToSession } from "@/utils/mappers/apiMappers";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NICKNAME_PATTERN = /^[가-힣a-zA-Z0-9]{2,12}$/;
 
 function toSignupError(error: unknown) {
   if (error instanceof ApiError) {
-    return error.message || "회원가입 처리에 실패했습니다.";
+    return error.message || "회원가입 요청을 처리하지 못했습니다.";
   }
 
-  return "요청 중 문제가 발생했습니다.";
+  return "잠시 후 다시 시도해 주세요.";
 }
 
 export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(session?: AuthSession): void; onNavigate(s: Screen): void }) {
@@ -129,6 +130,7 @@ export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(session?: Au
           onClick={() => onNavigate("login")}
           className="w-9 h-9 rounded-2xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
           aria-label="로그인으로 돌아가기"
+          type="button"
         >
           <ArrowLeft size={17} className="text-gray-700" />
         </button>
@@ -155,7 +157,7 @@ export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(session?: Au
             showEmailRequiredError
               ? "이메일을 입력해 주세요."
               : showEmailFormatError
-                ? "올바른 이메일 형식으로 입력해 주세요."
+                ? "이메일 형식에 맞게 입력해 주세요."
                 : emailStatus === "error"
                   ? "이미 사용 중인 이메일입니다."
                   : undefined
@@ -181,7 +183,7 @@ export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(session?: Au
             showNickRequiredError
               ? "닉네임을 입력해 주세요."
               : showNickFormatError
-                ? "닉네임은 한글, 영문, 숫자만 2~12자로 입력해 주세요."
+                ? "닉네임은 한글, 영문, 숫자 2~12자로 입력해 주세요."
                 : nickStatus === "error"
                   ? "이미 사용 중인 닉네임입니다."
                   : undefined
@@ -244,11 +246,12 @@ export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(session?: Au
           onClick={handleSignup}
           disabled={!canSignup}
           className="w-full py-3.5 rounded-2xl bg-blue-600 text-[13px] font-black text-white hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none transition-colors shadow-md shadow-blue-200 mt-2"
+          type="button"
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              가입 중...
+              가입 중
             </span>
           ) : (
             "회원가입"
@@ -256,8 +259,8 @@ export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(session?: Au
         </button>
 
         <div className="text-center text-[13px] text-gray-500">
-          이미 계정이 있으신가요?{" "}
-          <button onClick={() => onNavigate("login")} className="font-black text-blue-600 hover:underline">
+          이미 계정이 있나요?{" "}
+          <button onClick={() => onNavigate("login")} className="font-black text-blue-600 hover:underline" type="button">
             로그인
           </button>
         </div>
