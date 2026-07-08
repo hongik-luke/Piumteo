@@ -35,6 +35,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return HttpMethod.OPTIONS.matches(request.getMethod());
+    }
+
+    @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
