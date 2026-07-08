@@ -1,4 +1,4 @@
-import { cn } from "@/utils/common";
+import { cn } from "@/utils/cn";
 
 export function Sk({ className }: { className?: string }) {
   return <div className={cn("animate-pulse bg-gray-200 rounded-xl", className)} />;

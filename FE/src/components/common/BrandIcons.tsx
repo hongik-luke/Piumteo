@@ -1,9 +1,8 @@
 import piumteoLogo from "@/assets/logos/app-logo.png";
-import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 
 export function AppLogo({ size = 32 }: { size?: number }) {
   return (
-    <ImageWithFallback
+    <img
       src={piumteoLogo}
       alt="피움터 로고"
       style={{ width: size, height: size, flexShrink: 0 }}

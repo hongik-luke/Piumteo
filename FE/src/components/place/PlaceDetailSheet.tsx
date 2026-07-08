@@ -22,16 +22,16 @@ import {
   getComments,
   updateGuestComment,
   updateMemberComment,
-} from "@/apis/comments";
-import { ApiError } from "@/apis/client";
-import { reactPlaceAsGuest, reactPlaceAsMember } from "@/apis/reactions";
+} from "@/apis/comment/comment.api";
+import { ApiError } from "@/apis/client/apiClient";
+import { reactPlaceAsGuest, reactPlaceAsMember } from "@/apis/reaction/reaction.api";
 import { PasswordModal, PlaceDeleteModal } from "@/components/feedback/Overlays";
-import { BottomSheetSkeleton } from "@/components/skeletons/LoadingSkeletons";
-import { PLACE_CFG } from "@/mocks/placeData";
+import { BottomSheetSkeleton } from "@/components/common/LoadingSkeletons";
+import { PLACE_CFG } from "@/constants/place.constants";
 import type { CommentMutationResponse, ReactionSummaryResponse } from "@/types/api";
 import type { Comment, Place, Reaction, SheetState, ToastType } from "@/types/domain";
-import { apiReactionToDomain, commentResponseToDomain, domainReactionToApi } from "@/utils/apiMappers";
-import { cn } from "@/utils/common";
+import { apiReactionToDomain, commentResponseToDomain, domainReactionToApi } from "@/utils/mappers/apiMappers";
+import { cn } from "@/utils/cn";
 
 const COMMENTS_PAGE_SIZE = 10;
 
@@ -99,6 +99,7 @@ export function PlaceDetailSheet({
   const [submitting, setSubmitting] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<Comment | null>(null);
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<Comment | null>(null);
   const [pwError, setPwError] = useState(false);
   const [pwLoading, setPwLoading] = useState(false);
 
@@ -182,7 +183,6 @@ export function PlaceDetailSheet({
         ? await reactPlaceAsMember(placeId, body)
         : await reactPlaceAsGuest(placeId, guestKey, body);
       applyReactionSummary(response);
-
     } catch (error) {
       addToast("error", apiErrorMessage(error, "반응을 저장하지 못했습니다."));
     } finally {
@@ -210,9 +210,9 @@ export function PlaceDetailSheet({
       setText("");
       setGuestNick("");
       setGuestPw("");
-      addToast("success", "댓글을 등록했습니다.");
+      addToast("success", "댓글이 등록되었습니다.");
     } catch (error) {
-      addToast("error", apiErrorMessage(error, "댓글 등록에 실패했습니다."));
+      addToast("error", apiErrorMessage(error, "댓글을 등록하지 못했습니다."));
     } finally {
       setSubmitting(false);
     }
@@ -228,7 +228,7 @@ export function PlaceDetailSheet({
   async function handleEditSubmit() {
     if (!editingComment || !editText.trim() || editLoading) return;
     if (editingComment.isGuest && !editPw.trim()) {
-      setEditError("비밀번호를 입력해 주세요.");
+      setEditError("비회원 댓글 비밀번호를 입력해 주세요.");
       return;
     }
 
@@ -252,9 +252,9 @@ export function PlaceDetailSheet({
         ),
       );
       setEditingComment(null);
-      addToast("success", "댓글을 수정했습니다.");
+      addToast("success", "댓글이 수정되었습니다.");
     } catch (error) {
-      setEditError(apiErrorMessage(error, "댓글 수정에 실패했습니다."));
+      setEditError(apiErrorMessage(error, "댓글을 수정하지 못했습니다."));
     } finally {
       setEditLoading(false);
     }
@@ -265,9 +265,9 @@ export function PlaceDetailSheet({
       await deleteMemberComment(placeId, Number(comment.id));
       setCommentItems((prev) => prev.filter((item) => item.id !== comment.id));
       setCommentCount((prev) => Math.max(0, prev - 1));
-      addToast("success", "댓글을 삭제했습니다.");
+      addToast("success", "댓글이 삭제되었습니다.");
     } catch (error) {
-      addToast("error", apiErrorMessage(error, "댓글 삭제에 실패했습니다."));
+      addToast("error", apiErrorMessage(error, "댓글을 삭제하지 못했습니다."));
     }
   }
 
@@ -281,12 +281,30 @@ export function PlaceDetailSheet({
       setCommentItems((prev) => prev.filter((item) => item.id !== deleteTarget.id));
       setCommentCount((prev) => Math.max(0, prev - 1));
       setDeleteTarget(null);
-      addToast("success", "댓글을 삭제했습니다.");
+      addToast("success", "댓글이 삭제되었습니다.");
     } catch {
       setPwError(true);
     } finally {
       setPwLoading(false);
     }
+  }
+
+  function handleDeleteRequest(comment: Comment) {
+    setConfirmDeleteTarget(comment);
+  }
+
+  function handleDeleteConfirm() {
+    if (!confirmDeleteTarget) return;
+
+    const target = confirmDeleteTarget;
+    setConfirmDeleteTarget(null);
+
+    if (target.isGuest) {
+      setDeleteTarget(target);
+      return;
+    }
+
+    void handleMemberDelete(target);
   }
 
   return (
@@ -302,14 +320,15 @@ export function PlaceDetailSheet({
         <button
           className="flex flex-col items-center pt-3 pb-1.5 w-full flex-shrink-0"
           onClick={() => setSheetState((state) => (state === "peek" ? "full" : "peek"))}
-          aria-label={sheetState === "peek" ? "자세히 보기" : "접기"}
+          aria-label={sheetState === "peek" ? "시트 펼치기" : "시트 접기"}
+          type="button"
         >
           <div className="w-10 h-1 rounded-full bg-gray-200 mb-1" />
           <span className="text-[10px] text-gray-300 font-medium flex items-center gap-0.5">
             {sheetState === "peek" ? (
               <>
                 <ChevronUp size={10} />
-                자세히 보기
+                펼치기
               </>
             ) : (
               <>
@@ -338,11 +357,11 @@ export function PlaceDetailSheet({
                 </div>
                 <h2 className="text-[15px] font-bold text-gray-900 leading-tight mb-0.5">{place.name}</h2>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">현재 위치에서 {place.distance}</span>
-                  <span className="text-gray-200">·</span>
+                  <span className="text-xs text-gray-400">{place.distance}</span>
+                  <span className="text-gray-200">|</span>
                   <span className="text-xs text-gray-400 flex items-center gap-0.5">
                     <MessageSquare size={10} />
-                    {commentCount}개
+                    댓글 {commentCount}개
                   </span>
                 </div>
               </div>
@@ -350,6 +369,8 @@ export function PlaceDetailSheet({
                 <button
                   onClick={onClose}
                   className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+                  type="button"
+                  aria-label="닫기"
                 >
                   <X size={15} />
                 </button>
@@ -357,6 +378,8 @@ export function PlaceDetailSheet({
                   <button
                     onClick={() => setShowPlaceDelete(true)}
                     className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-400 hover:bg-red-100 transition-colors"
+                    type="button"
+                    aria-label="장소 삭제"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -379,6 +402,7 @@ export function PlaceDetailSheet({
                     ? "bg-blue-50 border-blue-300 text-blue-600 shadow-sm"
                     : "bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300",
                 )}
+                type="button"
               >
                 <ThumbsUp size={14} />
                 <span>{likeCount}</span>
@@ -393,13 +417,15 @@ export function PlaceDetailSheet({
                     ? "bg-red-50 border-red-300 text-red-500 shadow-sm"
                     : "bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300",
                 )}
+                type="button"
               >
                 <ThumbsDown size={14} />
                 <span>{dislikeCount}</span>
               </motion.button>
               <button
-                onClick={() => addToast("info", "길찾기 연결은 다음 단계에서 붙이겠습니다.")}
+                onClick={() => addToast("info", "길찾기 기능은 아직 연결되지 않았습니다.")}
                 className="ml-auto flex items-center gap-1.5 px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-[13px] font-bold text-gray-600 hover:border-gray-300 transition-all whitespace-nowrap"
+                type="button"
               >
                 <Route size={14} />
                 길찾기
@@ -416,7 +442,7 @@ export function PlaceDetailSheet({
                 {commentItems.length === 0 && !commentsLoading ? (
                   <div className="text-center py-6">
                     <MessageSquare size={22} className="text-gray-200 mx-auto mb-2" />
-                    <p className="text-xs text-gray-400">첫 댓글을 남겨보세요.</p>
+                    <p className="text-xs text-gray-400">아직 등록된 댓글이 없습니다.</p>
                   </div>
                 ) : (
                   commentItems.map((comment) => (
@@ -444,15 +470,15 @@ export function PlaceDetailSheet({
                                   onClick={() => openEdit(comment)}
                                   className="text-gray-300 hover:text-blue-500 transition-colors p-0.5"
                                   aria-label="댓글 수정"
+                                  type="button"
                                 >
                                   <Pencil size={12} />
                                 </button>
                                 <button
-                                  onClick={() =>
-                                    comment.isGuest ? setDeleteTarget(comment) : void handleMemberDelete(comment)
-                                  }
+                                  onClick={() => handleDeleteRequest(comment)}
                                   className="text-gray-300 hover:text-red-400 transition-colors p-0.5"
                                   aria-label="댓글 삭제"
+                                  type="button"
                                 >
                                   <Trash2 size={12} />
                                 </button>
@@ -484,7 +510,7 @@ export function PlaceDetailSheet({
                       <input
                         value={guestNick}
                         onChange={(event) => setGuestNick(event.target.value)}
-                        placeholder="닉네임"
+                        placeholder="비회원 닉네임"
                         className="flex-1 px-3.5 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
                       />
                       <input
@@ -497,7 +523,7 @@ export function PlaceDetailSheet({
                     </div>
                     <p className="text-[10px] text-gray-400 mb-2 flex items-center gap-1">
                       <Lock size={9} />
-                      비밀번호는 비회원 댓글 수정/삭제에 사용합니다.
+                      비회원 댓글 수정/삭제에 필요합니다.
                     </p>
                   </>
                 )}
@@ -505,7 +531,7 @@ export function PlaceDetailSheet({
                   <input
                     value={text}
                     onChange={(event) => setText(event.target.value)}
-                    placeholder={isLoggedIn ? "댓글을 입력하세요." : "댓글 내용"}
+                    placeholder={isLoggedIn ? "댓글을 입력하세요" : "비회원 댓글 입력"}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
@@ -519,6 +545,7 @@ export function PlaceDetailSheet({
                     onClick={() => void handleSubmit()}
                     disabled={submitting || !text.trim() || (!isLoggedIn && (!guestNick.trim() || !guestPw.trim()))}
                     className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white disabled:opacity-40 hover:bg-blue-700 transition-colors flex-shrink-0"
+                    type="button"
                   >
                     {submitting ? (
                       <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
@@ -534,6 +561,45 @@ export function PlaceDetailSheet({
       </motion.div>
 
       <AnimatePresence>
+        {confirmDeleteTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/45 z-[75] flex items-center justify-center px-5"
+            onClick={() => setConfirmDeleteTarget(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 12 }}
+              className="w-full bg-white rounded-3xl shadow-2xl p-5"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={24} className="text-red-500" />
+              </div>
+              <h2 className="text-[15px] font-bold text-gray-900 text-center mb-2">댓글을 삭제할까요?</h2>
+              <p className="text-[13px] text-gray-500 text-center leading-relaxed">삭제한 댓글은 되돌릴 수 없습니다.</p>
+              <div className="flex gap-2.5 mt-5">
+                <button
+                  onClick={() => setConfirmDeleteTarget(null)}
+                  className="flex-1 py-3 rounded-2xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  type="button"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="flex-1 py-3 rounded-2xl bg-red-500 text-[13px] font-semibold text-white hover:bg-red-600 transition-colors"
+                  type="button"
+                >
+                  삭제
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         {deleteTarget && (
           <PasswordModal
             onConfirm={(password) => void handleGuestDelete(password)}
@@ -571,7 +637,7 @@ export function PlaceDetailSheet({
                   type="password"
                   value={editPw}
                   onChange={(event) => setEditPw(event.target.value)}
-                  placeholder="작성 시 입력한 비밀번호"
+                  placeholder="비회원 댓글 비밀번호"
                   className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
                 />
               )}
@@ -585,6 +651,7 @@ export function PlaceDetailSheet({
                 <button
                   onClick={() => setEditingComment(null)}
                   className="flex-1 py-3 rounded-2xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  type="button"
                 >
                   취소
                 </button>
@@ -592,8 +659,9 @@ export function PlaceDetailSheet({
                   onClick={() => void handleEditSubmit()}
                   disabled={editLoading || !editText.trim()}
                   className="flex-1 py-3 rounded-2xl bg-blue-600 text-[13px] font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  type="button"
                 >
-                  {editLoading ? "수정 중..." : "수정"}
+                  {editLoading ? "저장 중" : "저장"}
                 </button>
               </div>
             </motion.div>
