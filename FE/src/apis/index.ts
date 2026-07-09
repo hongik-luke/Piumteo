@@ -1,4 +1,6 @@
+export * from "./client/ApiError";
 export * from "./client/apiClient";
+export * from "./client/errorMessage";
 export * from "./auth/auth.api";
 export * from "./comment/comment.api";
 export * from "./endpoints";

@@ -6,13 +6,14 @@ import type { Screen } from "@/app/screen";
 import { AppLogo, GuestIcon, MemberIcon } from "@/components/common/BrandIcons";
 import { LocationModal, LoginRequiredModal } from "@/components/feedback/Overlays";
 import { MapLegend } from "@/components/map/MapLegend";
-import { NaverMapCanvas, type MapLatLng } from "@/components/map/NaverMapCanvas";
+import { NaverMapCanvas, type MapChangeReason, type MapLatLng } from "@/components/map/NaverMapCanvas";
 import { PlaceDetailSheet } from "@/components/place/PlaceDetailSheet";
 import { PlaceRegisterSheet } from "@/components/place/PlaceRegisterSheet";
 import { useDebouncedCallback } from "@/hooks/common/useDebouncedCallback";
-import type { PlaceDetailResponse, PlaceMarkerResponse } from "@/types/api";
+import type { PlaceMarkerResponse } from "@/types/api";
 import type { AuthSession, Place, Reaction, ToastType } from "@/types/domain";
-import { apiReactionToDomain } from "@/utils/mappers/apiMappers";
+import { detailToPlace, markerToPlace } from "@/utils/mappers/place.mapper";
+import { apiReactionToDomain } from "@/utils/mappers/reaction.mapper";
 import { getStoredLastMapView, saveLastMapView } from "@/utils/storage/clientState";
 
 const HONGIK: MapLatLng = {
@@ -20,51 +21,91 @@ const HONGIK: MapLatLng = {
   lng: 126.9234567,
 };
 
-function markerToPlace(marker: PlaceMarkerResponse): Place {
-  return {
-    id: String(marker.placeId),
-    name: marker.placeName,
-    type: marker.placeType,
-    description: "장소 정보를 불러오는 중입니다.",
-    distance: "거리 계산 중",
-    likes: 0,
-    dislikes: 0,
-    commentCount: 0,
-    latitude: marker.latitude,
-    longitude: marker.longitude,
-    x: 50,
-    y: 50,
-  };
-}
-
-function detailToPlace(detail: PlaceDetailResponse): Place {
-  return {
-    id: String(detail.placeId),
-    name: detail.placeName,
-    type: detail.placeType,
-    description: detail.locationDescription ?? "등록된 위치 설명이 없습니다.",
-    distance: "거리 계산 중",
-    likes: detail.likeCount,
-    dislikes: detail.dislikeCount,
-    commentCount: detail.commentCount,
-    latitude: detail.latitude,
-    longitude: detail.longitude,
-    x: 50,
-    y: 50,
-    ownedByMe: detail.isOwner,
-  };
-}
-
 function getMapCenter(map: any, fallback: MapLatLng): MapLatLng {
   const center = map?.getCenter?.();
   if (!center) return fallback;
   return { lat: center.lat(), lng: center.lng() };
 }
 
+function readMapLatLng(value: any): MapLatLng | null {
+  if (!value) return null;
+
+  const lat = typeof value.lat === "function" ? value.lat() : value.lat ?? value.y;
+  const lng = typeof value.lng === "function" ? value.lng() : value.lng ?? value.x;
+
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  return { lat, lng };
+}
+
+function resolveRegisterPinTarget(map: any): MapLatLng | null {
+  const projection = map?.getProjection?.();
+  const element = map?.getElement?.();
+
+  if (!projection || !window.naver?.maps?.Point) return null;
+
+  try {
+    const anchor = document.querySelector<HTMLElement>("[data-register-pin-anchor]");
+    if (anchor && projection.fromPageXYToCoord) {
+      const rect = anchor.getBoundingClientRect();
+      const pagePoint = new naver.maps.Point(
+        rect.left + window.scrollX,
+        rect.top + window.scrollY,
+      );
+      const anchorTarget = readMapLatLng(projection.fromPageXYToCoord(pagePoint));
+      if (anchorTarget) return anchorTarget;
+    }
+
+    if (element?.getBoundingClientRect && projection.fromPageXYToCoord) {
+      const mapRect = element.getBoundingClientRect();
+      const sheet = document.querySelector<HTMLElement>("[data-register-sheet]");
+      const sheetTop = sheet?.getBoundingClientRect().top;
+      const pinViewportY =
+        typeof sheetTop === "number" && Number.isFinite(sheetTop)
+          ? Math.max(72, sheetTop / 2)
+          : mapRect.top + mapRect.height / 2;
+
+      const pagePoint = new naver.maps.Point(
+        mapRect.left + mapRect.width / 2 + window.scrollX,
+        pinViewportY + window.scrollY,
+      );
+      const pageTarget = readMapLatLng(projection.fromPageXYToCoord(pagePoint));
+      if (pageTarget) return pageTarget;
+
+      const offsetPoint = new naver.maps.Point(
+        mapRect.width / 2,
+        pinViewportY - mapRect.top,
+      );
+      const offsetTarget = readMapLatLng(
+        projection.fromOffsetToCoord?.(offsetPoint) ??
+        projection.fromContainerPixelToCoord?.(offsetPoint),
+      );
+      if (offsetTarget) return offsetTarget;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function getRegisterPinTarget(map: any, fallback: MapLatLng): MapLatLng {
+  return resolveRegisterPinTarget(map) ?? fallback;
+}
+
+function mergePlaceMarkers(prev: PlaceMarkerResponse[], next: PlaceMarkerResponse[]) {
+  const merged = new Map<number, PlaceMarkerResponse>();
+
+  prev.forEach((place) => merged.set(place.placeId, place));
+  next.forEach((place) => merged.set(place.placeId, place));
+
+  return Array.from(merged.values());
+}
+
 export function MapScreen({
   isLoggedIn,
   authSession,
-  guestKey,
   onNavigate,
   addToast,
   locationAsked,
@@ -74,7 +115,6 @@ export function MapScreen({
 }: {
   isLoggedIn: boolean;
   authSession: AuthSession | null;
-  guestKey: string;
   onNavigate(s: Screen): void;
   addToast(t: ToastType, m: string): void;
   locationAsked: boolean;
@@ -99,6 +139,7 @@ export function MapScreen({
 
   const mapRef = useRef<any>(null);
   const lastMarkerQueryKeyRef = useRef<string | null>(null);
+  const userMovedMapRef = useRef(false);
 
   const loadNearby = useCallback(
     async (center: MapLatLng, force = false) => {
@@ -108,8 +149,10 @@ export function MapScreen({
       lastMarkerQueryKeyRef.current = queryKey;
       try {
         const response = await getNearbyPlaces({ lat: center.lat, lng: center.lng });
+        if (lastMarkerQueryKeyRef.current !== queryKey) return;
         setPlaceMarkers(response);
       } catch {
+        if (lastMarkerQueryKeyRef.current !== queryKey) return;
         lastMarkerQueryKeyRef.current = null;
         setPlaceMarkers([]);
         addToast("error", "장소 목록을 불러오지 못했습니다.");
@@ -134,9 +177,11 @@ export function MapScreen({
           };
           setCurrentPosition(next);
           setCurrentPositionKind("current");
-          setMapCenter(next);
-          setShowSearch(false);
-          void loadNearby(next, true);
+          if (showSuccessToast || !userMovedMapRef.current) {
+            setMapCenter(next);
+            setShowSearch(false);
+            void loadNearby(next, true);
+          }
           onLocationDecision(true);
           if (showSuccessToast) addToast("success", "현재 위치로 이동했습니다.");
         },
@@ -145,8 +190,10 @@ export function MapScreen({
             onLocationDecision(false);
             setCurrentPosition(HONGIK);
             setCurrentPositionKind("fallback");
-            setMapCenter(HONGIK);
-            void loadNearby(HONGIK, true);
+            if (!userMovedMapRef.current) {
+              setMapCenter(HONGIK);
+              void loadNearby(HONGIK, true);
+            }
             addToast("warning", "위치 권한이 거부되어 기본 위치로 이동합니다.");
             return;
           }
@@ -169,7 +216,7 @@ export function MapScreen({
 
     if (locationGranted) {
       if (currentPosition && currentPositionKind === "current") {
-        void loadNearby(currentPosition);
+        if (!userMovedMapRef.current) void loadNearby(currentPosition);
         return;
       }
 
@@ -179,9 +226,11 @@ export function MapScreen({
 
     setCurrentPosition(HONGIK);
     setCurrentPositionKind("fallback");
-    setMapCenter(HONGIK);
-    void loadNearby(HONGIK, true);
-  }, [currentPosition, currentPositionKind, loadNearby, locationAsked, locationGranted, mapReady, mapCenter, moveToCurrentPosition]);
+    if (!userMovedMapRef.current) {
+      setMapCenter(HONGIK);
+      void loadNearby(HONGIK, true);
+    }
+  }, [currentPosition, currentPositionKind, loadNearby, locationAsked, locationGranted, mapReady, moveToCurrentPosition]);
 
   const handleMarkerClick = useCallback(
     async (placeId: number) => {
@@ -194,10 +243,10 @@ export function MapScreen({
 
       try {
         const detail = await getPlaceSummary(
-          { placeId, "X-Guest-Key": memberToken ? undefined : guestKey },
+          { placeId },
           {
             accessToken: memberToken,
-            authMode: memberToken ? "member" : "guest",
+            authMode: memberToken ? "member" : "optional",
           },
         );
         setSelected(detailToPlace(detail));
@@ -209,17 +258,67 @@ export function MapScreen({
         addToast("warning", "장소 상세 정보를 불러오지 못했습니다.");
       }
     },
-    [addToast, authSession, guestKey, placeMarkers],
+    [addToast, authSession, placeMarkers],
   );
 
-  const rememberCurrentMapView = useCallback(() => {
-    const center = getMapCenter(mapRef.current, mapCenter);
+  const rememberCurrentMapView = useCallback((nextCenter?: MapLatLng) => {
+    const center = nextCenter ?? getMapCenter(mapRef.current, mapCenter);
     saveLastMapView({ center, savedAt: Date.now() });
   }, [mapCenter]);
 
   const showSearchAfterMapChanged = useDebouncedCallback(() => {
     if (!selected && !showLoginRequired && !showRegisterSheet) setShowSearch(true);
   }, 350);
+
+  const updateRegisterTargetFromMap = useCallback(() => {
+    const center = getMapCenter(mapRef.current, mapCenter);
+    const nextRegisterTarget = getRegisterPinTarget(mapRef.current, center);
+    setMapCenter(center);
+    setRegisterTarget(nextRegisterTarget);
+    return nextRegisterTarget;
+  }, [mapCenter]);
+
+  const updateRegisterTargetAfterMapSettled = useDebouncedCallback(() => {
+    updateRegisterTargetFromMap();
+  }, 200);
+
+  useEffect(() => {
+    if (!showRegisterSheet) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      updateRegisterTargetFromMap();
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [showRegisterSheet, updateRegisterTargetFromMap]);
+
+  const handleMapChanged = useCallback((reason: MapChangeReason) => {
+    const center = getMapCenter(mapRef.current, mapCenter);
+    if (reason === "drag") userMovedMapRef.current = true;
+
+    if (showRegisterSheet) {
+      updateRegisterTargetAfterMapSettled();
+      if (reason === "center_changed" || reason === "drag") return;
+      userMovedMapRef.current = true;
+      setMapCenter(center);
+      rememberCurrentMapView(center);
+      return;
+    }
+
+    if (reason === "center_changed" || reason === "drag") return;
+    userMovedMapRef.current = true;
+    setMapCenter(center);
+    rememberCurrentMapView(center);
+    showSearchAfterMapChanged();
+  }, [mapCenter, rememberCurrentMapView, showRegisterSheet, showSearchAfterMapChanged, updateRegisterTargetAfterMapSettled]);
+
+  const getCurrentRegisterTarget = useCallback(() => {
+    const submitTarget = resolveRegisterPinTarget(mapRef.current);
+    if (!submitTarget) return null;
+
+    setRegisterTarget(submitTarget);
+    return submitTarget;
+  }, []);
 
   async function handleSearchArea() {
     const map = mapRef.current;
@@ -241,6 +340,7 @@ export function MapScreen({
       return;
     }
 
+    userMovedMapRef.current = true;
     setSearching(true);
     setShowSearch(false);
     lastMarkerQueryKeyRef.current = queryKey;
@@ -251,9 +351,11 @@ export function MapScreen({
         maxLat: ne.lat(),
         maxLng: ne.lng(),
       });
-      setPlaceMarkers(response);
+      if (lastMarkerQueryKeyRef.current !== queryKey) return;
+      setPlaceMarkers((prev) => mergePlaceMarkers(prev, response));
       addToast("success", "이 지역의 장소를 다시 불러왔습니다.");
     } catch {
+      if (lastMarkerQueryKeyRef.current !== queryKey) return;
       lastMarkerQueryKeyRef.current = null;
       setPlaceMarkers([]);
       addToast("error", "장소 목록을 불러오지 못했습니다.");
@@ -263,6 +365,7 @@ export function MapScreen({
   }
 
   function handleMoveToCurrentPosition() {
+    userMovedMapRef.current = false;
     moveToCurrentPosition(true);
   }
 
@@ -273,7 +376,8 @@ export function MapScreen({
     }
 
     const center = getMapCenter(mapRef.current, mapCenter);
-    setRegisterTarget(center);
+    setMapCenter(center);
+    setRegisterTarget(getRegisterPinTarget(mapRef.current, center));
     setSelected(null);
     setShowSearch(false);
     setShowRegisterSheet(true);
@@ -300,15 +404,13 @@ export function MapScreen({
         currentPosition={currentPosition}
         currentPositionKind={currentPositionKind}
         selectedPlaceId={selected ? Number(selected.id) : null}
+        syncCenter={!showRegisterSheet}
         onReady={(map) => {
           mapRef.current = map;
           setMapLoading(false);
           setMapReady(true);
         }}
-        onMapChanged={() => {
-          rememberCurrentMapView();
-          showSearchAfterMapChanged();
-        }}
+        onMapChanged={handleMapChanged}
         onMarkerClick={handleMarkerClick}
         onError={() => {
           setMapLoading(false);
@@ -473,7 +575,7 @@ export function MapScreen({
               place={selected}
               onClose={() => setSelected(null)}
               isLoggedIn={isLoggedIn}
-              guestKey={guestKey}
+              currentPosition={currentPositionKind === "current" ? currentPosition : null}
               reaction={reactions[selected.id] ?? null}
               onReact={(reaction) => setReactions((prev) => ({ ...prev, [selected.id]: reaction }))}
               addToast={addToast}
@@ -496,21 +598,13 @@ export function MapScreen({
 
       <AnimatePresence>
         {showRegisterSheet && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 z-30 bg-black/10"
-              onClick={handleCloseRegisterSheet}
-            />
-            <PlaceRegisterSheet
-              targetCenter={registerTarget}
-              onClose={handleCloseRegisterSheet}
-              onCreated={handlePlaceCreated}
-              addToast={addToast}
-            />
-          </>
+          <PlaceRegisterSheet
+            targetCenter={registerTarget}
+            getCurrentTargetCenter={getCurrentRegisterTarget}
+            onClose={handleCloseRegisterSheet}
+            onCreated={handlePlaceCreated}
+            addToast={addToast}
+          />
         )}
       </AnimatePresence>
 

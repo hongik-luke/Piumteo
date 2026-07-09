@@ -1,9 +1,16 @@
 import { API_BASE_URL } from "@/config";
-import type { ApiResponse } from "@/types/api";
+import type { ApiResponse, ErrorResponse } from "@/types/api";
 import { notifyAuthExpired } from "@/app/authEvents";
-import { clearAuthSession, getOrCreateGuestKey, getStoredAccessToken } from "@/utils/storage/clientState";
+import { ApiError } from "@/apis/client/ApiError";
+import { getApiErrorMessage, isAuthExpiredError } from "@/apis/client/errorMessage";
+import {
+  clearAuthSession,
+  getOrCreateGuestKey,
+  getStoredAccessToken,
+  getStoredGuestKey,
+} from "@/utils/storage/clientState";
 
-export type ApiAuthMode = "none" | "member" | "guest" | "auto";
+export type ApiAuthMode = "none" | "member" | "guest" | "optional";
 
 export interface ApiRequestOptions extends RequestInit {
   accessToken?: string | null;
@@ -11,26 +18,26 @@ export interface ApiRequestOptions extends RequestInit {
   authMode?: ApiAuthMode;
 }
 
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-    public readonly code?: string,
-  ) {
-    super(message);
-  }
-}
-
 export async function apiRequest<T>(path: string, init: ApiRequestOptions = {}): Promise<T> {
   const { accessToken, guestKey, authMode = "none", headers, ...requestInit } = init;
-  const resolvedAccessToken =
-    authMode === "member" || authMode === "auto"
-      ? accessToken ?? getStoredAccessToken()
-      : null;
-  const resolvedGuestKey =
-    authMode === "guest" || (authMode === "auto" && !resolvedAccessToken)
-      ? guestKey ?? getOrCreateGuestKey()
-      : guestKey;
+  let resolvedAccessToken: string | null = null;
+  let resolvedGuestKey: string | null = null;
+
+  if (authMode === "member") {
+    resolvedAccessToken = accessToken ?? getStoredAccessToken();
+    if (!resolvedAccessToken) {
+      throw new ApiError("로그인이 필요합니다.", 401, "UNAUTHORIZED");
+    }
+  }
+
+  if (authMode === "guest") {
+    resolvedGuestKey = guestKey ?? getOrCreateGuestKey();
+  }
+
+  if (authMode === "optional") {
+    resolvedAccessToken = accessToken ?? getStoredAccessToken();
+    resolvedGuestKey = resolvedAccessToken ? null : guestKey ?? getStoredGuestKey();
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...requestInit,
@@ -41,15 +48,26 @@ export async function apiRequest<T>(path: string, init: ApiRequestOptions = {}):
       ...headers,
     },
   });
-  const body = (await response.json().catch(() => null)) as ApiResponse<T> | null;
+  const body = (await response.json().catch(() => null)) as ApiResponse<T> | ErrorResponse | null;
 
   if (!response.ok || !body) {
-    if (response.status === 401 && resolvedAccessToken) {
+    const error = new ApiError(
+      getApiErrorMessage(
+        new ApiError(body?.message ?? "API request failed.", response.status, body?.code, body),
+        body?.message ?? "API request failed.",
+      ),
+      response.status,
+      body?.code,
+      body,
+    );
+
+    if (resolvedAccessToken && isAuthExpiredError(error)) {
       clearAuthSession();
       notifyAuthExpired();
     }
-    throw new ApiError(body?.message ?? "API request failed.", response.status, body?.code);
+
+    throw error;
   }
 
-  return body.result;
+  return (body as ApiResponse<T>).result;
 }

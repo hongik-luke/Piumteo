@@ -10,7 +10,6 @@ import { SignupScreen } from "@/pages/signup/SignupPage";
 import type { AuthSession, ToastItem, ToastType } from "@/types/domain";
 import {
   clearAuthSession,
-  getOrCreateGuestKey,
   getStoredAuthSession,
   getStoredLocationConsent,
   saveAuthSession,
@@ -21,7 +20,6 @@ import { uid } from "@/utils/uid";
 export default function App() {
   const [screen, setScreen] = useState<Screen>("map");
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => getStoredAuthSession());
-  const [guestKey] = useState(() => getOrCreateGuestKey());
   const [locationConsent, setLocationConsent] = useState(() => getStoredLocationConsent());
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
@@ -98,7 +96,6 @@ export default function App() {
             <MapScreen
               isLoggedIn={isLoggedIn}
               authSession={authSession}
-              guestKey={guestKey}
               onNavigate={setScreen}
               addToast={addToast}
               locationAsked={locationAsked}

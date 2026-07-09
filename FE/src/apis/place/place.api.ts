@@ -24,7 +24,7 @@ export function getPlacesInBounds(
 export function getPlaceSummary({ placeId, "X-Guest-Key": guestKey }: GetPlaceSummaryRequest, init?: ApiRequestOptions) {
   return apiRequest<PlaceDetailResponse>(API_ENDPOINTS.places.summary(placeId), {
     ...init,
-    authMode: init?.authMode ?? "auto",
+    authMode: init?.authMode ?? "optional",
     guestKey,
   });
 }

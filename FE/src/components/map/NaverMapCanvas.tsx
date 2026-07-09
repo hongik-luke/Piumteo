@@ -4,12 +4,15 @@ import markerNonSmokingArea from "@/assets/icons/marker-non-smoking-area-bgclean
 import markerSmokingArea from "@/assets/icons/marker-smoking-area-bgclean.png";
 import markerSmokingBooth from "@/assets/icons/marker-smoking-booth-bgclean.png";
 import { loadNaverMapScript } from "@/libs/naver-map/naverMapLoader";
-import type { PlaceMarkerResponse, PlaceType } from "@/types/api";
+import type { PlaceMarkerResponse } from "@/types/api";
+import type { PlaceType } from "@/types/domain";
 
 export interface MapLatLng {
   lat: number;
   lng: number;
 }
+
+export type MapChangeReason = "center_changed" | "drag" | "dragend" | "zoom_changed";
 
 const MARKER_IMAGES: Record<PlaceType, string> = {
   SMOKING_BOOTH: markerSmokingBooth,
@@ -161,6 +164,7 @@ export function NaverMapCanvas({
   currentPosition,
   currentPositionKind = "current",
   selectedPlaceId,
+  syncCenter = true,
   onReady,
   onMapChanged,
   onMarkerClick,
@@ -171,8 +175,9 @@ export function NaverMapCanvas({
   currentPosition: MapLatLng | null;
   currentPositionKind?: "current" | "fallback";
   selectedPlaceId?: number | null;
+  syncCenter?: boolean;
   onReady(map: any): void;
-  onMapChanged(): void;
+  onMapChanged(reason: MapChangeReason): void;
   onMarkerClick(placeId: number): void;
   onError(error: Error): void;
 }) {
@@ -180,6 +185,17 @@ export function NaverMapCanvas({
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const currentMarkerRef = useRef<any>(null);
+  const onMapChangedRef = useRef(onMapChanged);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  const onReadyRef = useRef(onReady);
+  const onErrorRef = useRef(onError);
+
+  useEffect(() => {
+    onMapChangedRef.current = onMapChanged;
+    onMarkerClickRef.current = onMarkerClick;
+    onReadyRef.current = onReady;
+    onErrorRef.current = onError;
+  }, [onMapChanged, onMarkerClick, onReady, onError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,10 +217,12 @@ export function NaverMapCanvas({
         });
 
         mapRef.current = map;
-        onReady(map);
+        onReadyRef.current(map);
 
-        naver.maps.Event.addListener(map, "dragend", onMapChanged);
-        naver.maps.Event.addListener(map, "zoom_changed", onMapChanged);
+        naver.maps.Event.addListener(map, "center_changed", () => onMapChangedRef.current("center_changed"));
+        naver.maps.Event.addListener(map, "drag", () => onMapChangedRef.current("drag"));
+        naver.maps.Event.addListener(map, "dragend", () => onMapChangedRef.current("dragend"));
+        naver.maps.Event.addListener(map, "zoom_changed", () => onMapChangedRef.current("zoom_changed"));
       } catch (error) {
         onError(error instanceof Error ? error : new Error("네이버 지도를 불러오지 못했습니다."));
       }
@@ -221,8 +239,9 @@ export function NaverMapCanvas({
 
   useEffect(() => {
     if (!mapRef.current) return;
+    if (!syncCenter) return;
     mapRef.current.panTo(new naver.maps.LatLng(center.lat, center.lng));
-  }, [center.lat, center.lng]);
+  }, [center.lat, center.lng, syncCenter]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -242,10 +261,10 @@ export function NaverMapCanvas({
         },
       });
 
-      naver.maps.Event.addListener(marker, "click", () => onMarkerClick(place.placeId));
+      naver.maps.Event.addListener(marker, "click", () => onMarkerClickRef.current(place.placeId));
       return marker;
     });
-  }, [places, onMarkerClick, selectedPlaceId]);
+  }, [places, selectedPlaceId]);
 
   useEffect(() => {
     if (!mapRef.current) return;
