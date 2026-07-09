@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { AlertCircle, MapPin, Send, X } from "lucide-react";
+import { AlertCircle, Send, X } from "lucide-react";
+import { getApiErrorMessage } from "@/apis/client/errorMessage";
 import { createPlace } from "@/apis/place/place.api";
-import { ApiError } from "@/apis/client/apiClient";
+import markerImplicitSmokingArea from "@/assets/icons/marker-implicit-smoking-area-bgclean.png";
+import markerNonSmokingArea from "@/assets/icons/marker-non-smoking-area-bgclean.png";
+import markerSmokingArea from "@/assets/icons/marker-smoking-area-bgclean.png";
+import markerSmokingBooth from "@/assets/icons/marker-smoking-booth-bgclean.png";
 import { PLACE_CFG } from "@/constants/place.constants";
 import type { MapLatLng } from "@/components/map/NaverMapCanvas";
 import type { PlaceMarkerResponse } from "@/types/api";
 import type { PlaceType, ToastType } from "@/types/domain";
 import { cn } from "@/utils/cn";
+
+export const REGISTER_SHEET_MAX_HEIGHT = 430;
+const REGISTER_SHEET_HEIGHT_CSS = `min(${REGISTER_SHEET_MAX_HEIGHT}px, 56svh)`;
+const REGISTER_MARKER_ANCHOR_Y = 52;
 
 const PLACE_TYPES: PlaceType[] = [
   "SMOKING_BOOTH",
@@ -16,23 +24,26 @@ const PLACE_TYPES: PlaceType[] = [
   "NON_SMOKING_AREA",
 ];
 
-function registerErrorMessage(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.status === 401) return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
-    if (error.status === 403) return "장소를 등록할 권한이 없습니다.";
-    return error.message || "장소 등록에 실패했습니다.";
-  }
+const REGISTER_MARKER_IMAGES: Record<PlaceType, string> = {
+  SMOKING_BOOTH: markerSmokingBooth,
+  SMOKING_AREA: markerSmokingArea,
+  IMPLICIT_SMOKING_AREA: markerImplicitSmokingArea,
+  NON_SMOKING_AREA: markerNonSmokingArea,
+};
 
-  return "장소 등록 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+function registerErrorMessage(error: unknown) {
+  return getApiErrorMessage(error, "장소 등록 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.");
 }
 
 export function PlaceRegisterSheet({
   targetCenter,
+  getCurrentTargetCenter,
   onClose,
   onCreated,
   addToast,
 }: {
   targetCenter: MapLatLng;
+  getCurrentTargetCenter(): MapLatLng | null;
   onClose(): void;
   onCreated(place: PlaceMarkerResponse): void;
   addToast(t: ToastType, m: string): void;
@@ -43,6 +54,7 @@ export function PlaceRegisterSheet({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [loading, setLoading] = useState(false);
+  const previewType = type ?? "SMOKING_BOOTH";
 
   useEffect(() => {
     setSubmitError("");
@@ -62,13 +74,19 @@ export function PlaceRegisterSheet({
     setSubmitError("");
     if (Object.keys(nextErrors).length > 0 || !type) return;
 
+    const submitTarget = getCurrentTargetCenter();
+    if (!submitTarget) {
+      setSubmitError("현재 지도에서 등록 위치를 확인하지 못했습니다. 지도를 조금 움직인 뒤 다시 시도해 주세요.");
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await createPlace({
         placeName: trimmedName,
         placeType: type,
-        latitude: targetCenter.lat,
-        longitude: targetCenter.lng,
+        latitude: submitTarget.lat,
+        longitude: submitTarget.lng,
         locationDescription: trimmedDescription || null,
       });
 
@@ -76,8 +94,8 @@ export function PlaceRegisterSheet({
         placeId: response.placeId,
         placeName: response.placeName,
         placeType: response.placeType,
-        latitude: targetCenter.lat,
-        longitude: targetCenter.lng,
+        latitude: submitTarget.lat,
+        longitude: submitTarget.lng,
       });
       addToast("success", "장소가 등록되었습니다.");
       onClose();
@@ -90,37 +108,40 @@ export function PlaceRegisterSheet({
 
   return (
     <>
-      <div className="absolute inset-x-0 top-0 bottom-[430px] z-30 pointer-events-none flex items-center justify-center">
-        <div className="flex flex-col items-center drop-shadow-xl">
-          <div className="w-12 h-12 rounded-full bg-blue-600 border-[3px] border-white flex items-center justify-center shadow-2xl">
-            <MapPin size={22} className="text-white" />
-          </div>
-          <div
-            className="w-0 h-0 -mt-0.5"
-            style={{ borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "12px solid #2563EB" }}
-          />
-          <div className="w-4 h-1.5 rounded-full bg-black/20 blur-[3px] mt-0.5" />
-        </div>
+      <div
+        data-register-pin-anchor
+        className="absolute left-1/2 z-30 h-px w-px pointer-events-none"
+        style={{ top: `calc((100% - ${REGISTER_SHEET_HEIGHT_CSS}) / 2)` }}
+      >
+        <div className="absolute left-1/2 top-0 h-2.5 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/20 blur-[3px]" />
+        <img
+          src={REGISTER_MARKER_IMAGES[previewType]}
+          alt=""
+          className="absolute left-1/2 top-0 block h-[58px] w-[50px] max-w-none object-contain drop-shadow-[0_12px_10px_rgba(15,23,42,0.26)]"
+          style={{ transform: `translate(-50%, -${REGISTER_MARKER_ANCHOR_Y}px)` }}
+        />
       </div>
 
       <motion.div
+        data-register-sheet
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", stiffness: 370, damping: 34 }}
-        className="absolute bottom-0 left-0 right-0 z-40 bg-white rounded-t-[28px] shadow-2xl"
+        className="absolute bottom-0 left-0 right-0 z-40 overflow-hidden bg-white rounded-t-[28px] shadow-2xl pointer-events-auto"
+        style={{ height: REGISTER_SHEET_HEIGHT_CSS }}
       >
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
-        <div className="px-5 pb-8 pt-2 space-y-4">
+        <div className="h-[calc(100%-16px)] overflow-y-auto px-5 pb-8 pt-2 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-[15px] font-black text-gray-900">장소 등록</h2>
-              <p className="mt-1 text-[11px] text-gray-500">현재 지도 중심 위치에 흡연 장소를 등록합니다.</p>
+              <p className="mt-1 text-[11px] text-gray-500">지도 위 핀 위치에 흡연 장소를 등록합니다.</p>
               <p className="mt-1 text-[10px] text-gray-400 font-mono">
-                {targetCenter.lat.toFixed(6)}, {targetCenter.lng.toFixed(6)}
+                등록 좌표 {targetCenter.lat.toFixed(6)}, {targetCenter.lng.toFixed(6)}
               </p>
             </div>
             <button
@@ -241,7 +262,8 @@ export function PlaceRegisterSheet({
               </>
             ) : (
               <>
-                <Send size={15} />이 장소 등록
+                <Send size={15} />
+                이 장소 등록
               </>
             )}
           </motion.button>
