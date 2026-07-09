@@ -4,6 +4,8 @@ export interface Place {
   id: string;
   name: string;
   type: PlaceType;
+  latitude: number;
+  longitude: number;
   description: string;
   distance: string;
   likes: number;

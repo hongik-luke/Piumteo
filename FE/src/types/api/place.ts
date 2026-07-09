@@ -1,7 +1,6 @@
 import type { Decimal, Id, OptionalGuestKeyHeader } from "./common";
 import type { ReactionType } from "./reaction";
-
-export type PlaceType = "SMOKING_BOOTH" | "SMOKING_AREA" | "IMPLICIT_SMOKING_AREA" | "NON_SMOKING_AREA";
+import type { PlaceType } from "@/types/domain";
 
 export interface GetNearbyPlacesRequest {
   lat: Decimal;

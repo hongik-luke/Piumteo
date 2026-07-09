@@ -1,4 +1,4 @@
-import type { DateTimeString, Id } from "./common";
+import type { DateTimeString, GuestKeyHeader, Id } from "./common";
 
 export type ReactionType = "LIKE" | "DISLIKE" | "CANCELED";
 
@@ -10,9 +10,8 @@ export interface ReactPlaceAsMemberRequest extends ReactPlaceRequest {
   placeId: Id;
 }
 
-export interface ReactPlaceAsGuestRequest extends ReactPlaceRequest {
+export interface ReactPlaceAsGuestRequest extends ReactPlaceRequest, GuestKeyHeader {
   placeId: Id;
-  guestKey: string;
 }
 
 export interface ReactionSummaryResponse {
