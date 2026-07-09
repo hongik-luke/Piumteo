@@ -18,6 +18,8 @@
 *.env
 **/.env
 **/.env.*
+!.env.example
+!**/.env.example
 **/src/main/resources/application-local.yml
 **/application-local.yml
 

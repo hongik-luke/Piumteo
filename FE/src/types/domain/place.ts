@@ -11,6 +11,8 @@ export interface Place {
   likes: number;
   dislikes: number;
   commentCount: number;
+  latitude: number;
+  longitude: number;
   x: number;
   y: number;
   ownedByMe?: boolean;
