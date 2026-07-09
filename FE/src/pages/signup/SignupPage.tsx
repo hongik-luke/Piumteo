@@ -2,21 +2,17 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, XCircle } from "lucide-react";
 import { checkEmail as checkEmailApi, checkNickname as checkNicknameApi, signup } from "@/apis/auth/auth.api";
-import { ApiError } from "@/apis/client/apiClient";
+import { getApiErrorMessage } from "@/apis/client/errorMessage";
 import type { Screen } from "@/app/screen";
 import { AuthInput } from "@/components/auth/AuthInput";
 import type { AuthSession } from "@/types/domain";
-import { authResponseToSession } from "@/utils/mappers/apiMappers";
+import { authResponseToSession } from "@/utils/mappers/auth.mapper";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NICKNAME_PATTERN = /^[가-힣a-zA-Z0-9]{2,12}$/;
 
 function toSignupError(error: unknown) {
-  if (error instanceof ApiError) {
-    return error.message || "회원가입 요청을 처리하지 못했습니다.";
-  }
-
-  return "잠시 후 다시 시도해 주세요.";
+  return getApiErrorMessage(error, "잠시 후 다시 시도해 주세요.");
 }
 
 export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(session?: AuthSession): void; onNavigate(s: Screen): void }) {

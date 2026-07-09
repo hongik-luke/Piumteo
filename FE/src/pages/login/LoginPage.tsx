@@ -2,17 +2,18 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { MapPin, XCircle } from "lucide-react";
 import { login } from "@/apis/auth/auth.api";
-import { ApiError } from "@/apis/client/apiClient";
+import { ApiError } from "@/apis/client/ApiError";
+import { getApiErrorMessage } from "@/apis/client/errorMessage";
 import type { Screen } from "@/app/screen";
 import { AuthInput } from "@/components/auth/AuthInput";
 import { AppLogo } from "@/components/common/BrandIcons";
 import type { AuthSession } from "@/types/domain";
-import { authResponseToSession } from "@/utils/mappers/apiMappers";
+import { authResponseToSession } from "@/utils/mappers/auth.mapper";
 
 function toLoginError(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 401) return "이메일 또는 비밀번호가 올바르지 않습니다.";
-    return error.message || "로그인 요청을 처리하지 못했습니다.";
+    return getApiErrorMessage(error, "로그인 요청을 처리하지 못했습니다.");
   }
 
   return "잠시 후 다시 시도해 주세요.";
