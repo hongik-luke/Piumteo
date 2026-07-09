@@ -13,14 +13,12 @@ export function reactPlaceAsMember(placeId: number, body: ReactPlaceRequest, ini
 
 export function reactPlaceAsGuest(
   placeId: number,
-  guestKey: string,
   body: ReactPlaceRequest,
   init?: ApiRequestOptions,
 ) {
   return apiRequest<ReactionSummaryResponse>(API_ENDPOINTS.reactions.guest(placeId), {
     ...init,
     authMode: init?.authMode ?? "guest",
-    guestKey,
     method: "PUT",
     body: JSON.stringify(body),
   });

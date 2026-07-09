@@ -14,7 +14,7 @@ import type {
 export function getComments({ placeId, cursorId, size }: GetCommentsRequest, init?: ApiRequestOptions) {
   return apiRequest<CommentCursorResponse>(API_ENDPOINTS.comments.list(placeId, cursorId, size), {
     ...init,
-    authMode: init?.authMode ?? "auto",
+    authMode: init?.authMode ?? "optional",
   });
 }
 

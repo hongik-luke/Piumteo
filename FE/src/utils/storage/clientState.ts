@@ -21,11 +21,30 @@ function createUuid() {
 }
 
 export function getStoredAuthSession() {
-  return readStorageValue<AuthSession | null>(STORAGE_KEYS.authSession, null);
+  const session = readStorageValue<AuthSession | null>(STORAGE_KEYS.authSession, null);
+  if (!session?.accessToken) return null;
+
+  const sanitizedSession: AuthSession = {
+    userId: session.userId,
+    nickname: session.nickname,
+    role: session.role,
+    accessToken: session.accessToken,
+  };
+
+  if ("email" in session) {
+    writeStorageValue(STORAGE_KEYS.authSession, sanitizedSession);
+  }
+
+  return sanitizedSession;
 }
 
 export function saveAuthSession(session: AuthSession) {
-  writeStorageValue(STORAGE_KEYS.authSession, session);
+  writeStorageValue(STORAGE_KEYS.authSession, {
+    userId: session.userId,
+    nickname: session.nickname,
+    role: session.role,
+    accessToken: session.accessToken,
+  });
 }
 
 export function clearAuthSession() {
@@ -36,8 +55,12 @@ export function getStoredAccessToken() {
   return getStoredAuthSession()?.accessToken ?? null;
 }
 
+export function getStoredGuestKey() {
+  return readStorageValue<string | null>(STORAGE_KEYS.guestKey, null);
+}
+
 export function getOrCreateGuestKey() {
-  const stored = readStorageValue<string | null>(STORAGE_KEYS.guestKey, null);
+  const stored = getStoredGuestKey();
   if (stored) return stored;
 
   const next = createUuid();
