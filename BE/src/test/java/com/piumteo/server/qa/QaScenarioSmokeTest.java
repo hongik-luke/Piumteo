@@ -1,7 +1,5 @@
 package com.piumteo.server.qa;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.piumteo.server.domain.comment.entity.PlaceComment;
 import com.piumteo.server.domain.comment.repository.PlaceCommentRepository;
 import com.piumteo.server.domain.place.entity.Place;
@@ -14,6 +12,7 @@ import com.piumteo.server.domain.user.entity.User;
 import com.piumteo.server.domain.user.repository.UserRepository;
 import com.piumteo.server.global.util.HashUtils;
 import com.piumteo.server.global.util.TimeUtils;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -43,9 +42,6 @@ class QaScenarioSmokeTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -85,7 +81,7 @@ class QaScenarioSmokeTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.result.email").value(email))
                 .andExpect(jsonPath("$.result.nickname").value(nickname))
-                .andExpect(jsonPath("$.result.accessToken").isEmpty());
+                .andExpect(jsonPath("$.result.accessToken").doesNotExist());
 
         mockMvc.perform(get("/api/auth/check-email")
                         .param("email", email))
@@ -101,15 +97,21 @@ class QaScenarioSmokeTest {
                                 }
                                 """.formatted(email, PASSWORD)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.accessToken").isString());
+                .andExpect(jsonPath("$.result.accessToken").doesNotExist())
+                .andExpect(result -> {
+                    Cookie cookie = result.getResponse().getCookie("accessToken");
+                    assertThat(cookie).isNotNull();
+                    assertThat(cookie.isHttpOnly()).isTrue();
+                    assertThat(cookie.getPath()).isEqualTo("/");
+                });
     }
 
     @Test
     void placeMarkerSummaryCommentReactionAndHardDeleteCascade() throws Exception {
         User owner = saveUser("owner");
         User other = saveUser("other");
-        String ownerToken = login(owner.getEmail());
-        String otherToken = login(other.getEmail());
+        Cookie ownerCookie = login(owner.getEmail());
+        Cookie otherCookie = login(other.getEmail());
 
         Place place = placeRepository.saveAndFlush(new Place(
                 owner,
@@ -157,7 +159,7 @@ class QaScenarioSmokeTest {
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(post("/api/places/%d/comments/member".formatted(place.getId()))
-                        .header("Authorization", "Bearer " + ownerToken)
+                        .cookie(ownerCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -181,7 +183,7 @@ class QaScenarioSmokeTest {
                 .andExpect(jsonPath("$.result.commentAuthorType").value("GUEST"));
 
         mockMvc.perform(put("/api/places/%d/reaction/member".formatted(place.getId()))
-                        .header("Authorization", "Bearer " + ownerToken)
+                        .cookie(ownerCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -206,7 +208,7 @@ class QaScenarioSmokeTest {
                 .andExpect(jsonPath("$.result.dislikeCount").value(1));
 
         mockMvc.perform(get("/api/places/%d/summary".formatted(place.getId()))
-                        .header("Authorization", "Bearer " + ownerToken))
+                        .cookie(ownerCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.myReactionType").value("LIKE"))
                 .andExpect(jsonPath("$.result.isOwner").value(true))
@@ -215,11 +217,11 @@ class QaScenarioSmokeTest {
                 .andExpect(jsonPath("$.result.dislikeCount").value(1));
 
         mockMvc.perform(delete("/api/places/%d".formatted(place.getId()))
-                        .header("Authorization", "Bearer " + otherToken))
+                        .cookie(otherCookie))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(delete("/api/places/%d".formatted(place.getId()))
-                        .header("Authorization", "Bearer " + ownerToken))
+                        .cookie(ownerCookie))
                 .andExpect(status().isOk());
 
         assertThat(placeRepository.findById(place.getId())).isEmpty();
@@ -310,8 +312,8 @@ class QaScenarioSmokeTest {
         ));
     }
 
-    private String login(String email) throws Exception {
-        String response = mockMvc.perform(post("/api/auth/login")
+    private Cookie login(String email) throws Exception {
+        Cookie cookie = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -322,9 +324,9 @@ class QaScenarioSmokeTest {
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
-                .getContentAsString();
+                .getCookie("accessToken");
 
-        JsonNode root = objectMapper.readTree(response);
-        return root.path("result").path("accessToken").asText();
+        assertThat(cookie).isNotNull();
+        return cookie;
     }
 }

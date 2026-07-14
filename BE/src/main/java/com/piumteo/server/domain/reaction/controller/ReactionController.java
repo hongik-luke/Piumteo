@@ -44,13 +44,13 @@ public class ReactionController {
             description = """
                     로그인한 회원의 현재 시간대 반응을 기록하거나 변경합니다.
                     
-                    - Authorization: Bearer {accessToken} 헤더가 필요합니다.
+                    - HttpOnly accessToken Cookie가 필요합니다.
                     - 같은 시간대에 row가 없고 LIKE/DISLIKE를 보내면 새 반응을 생성합니다.
                     - 같은 시간대에 같은 반응을 다시 보내면 CANCELED로 변경합니다.
                     - 같은 시간대에 다른 반응을 보내면 요청한 반응으로 변경합니다.
                     - CANCELED는 likeCount/dislikeCount 집계에서 제외됩니다.
                     """,
-            security = @SecurityRequirement(name = "bearerAuth"),
+            security = @SecurityRequirement(name = "cookieAuth"),
             requestBody = @RequestBody(
                     required = true,
                     content = @Content(
