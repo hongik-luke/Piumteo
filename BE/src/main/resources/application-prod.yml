@@ -14,15 +14,29 @@ spring:
 
 logging:
   level:
-    org.hibernate.SQL: info
-    org.hibernate.orm.jdbc.bind: info
+    root: info
+    com.piumteo: info
+    org.hibernate.SQL: warn
+    org.hibernate.orm.jdbc.bind: warn
+    org.springframework.security: info
 
 jwt:
   token:
     secret-key: ${JWT_SECRET_KEY}
 
+auth:
+  cookie:
+    secure: true
+    same-site: Lax
+
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://piumteo.site,https://www.piumteo.site}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
 management:
   endpoints:

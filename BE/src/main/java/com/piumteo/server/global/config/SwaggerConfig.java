@@ -3,6 +3,7 @@ package com.piumteo.server.global.config;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityScheme.In;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
@@ -18,12 +19,12 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .components(new Components()
                         .addSecuritySchemes(
-                                "bearerAuth",
+                                "cookieAuth",
                                 new SecurityScheme()
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")
-                                        .description("JWT Access Token을 입력합니다. 예: Bearer {accessToken}")
+                                        .type(SecurityScheme.Type.APIKEY)
+                                        .in(In.COOKIE)
+                                        .name("accessToken")
+                                        .description("로그인 성공 시 발급되는 HttpOnly accessToken Cookie를 사용합니다.")
                         ))
                 .info(new Info()
                         .title("피움터 API")
