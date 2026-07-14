@@ -17,6 +17,8 @@ export const API_ENDPOINTS = {
   auth: {
     signup: "/api/auth/signup",
     login: "/api/auth/login",
+    me: "/api/auth/me",
+    logout: "/api/auth/logout",
     checkEmail: (email: string) => withQuery("/api/auth/check-email", { email }),
     checkNickname: (nickname: string) => withQuery("/api/auth/check-nickname", { nickname }),
   },

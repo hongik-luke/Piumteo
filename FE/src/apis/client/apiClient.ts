@@ -6,44 +6,34 @@ import { getApiErrorMessage, isAuthExpiredError } from "@/apis/client/errorMessa
 import {
   clearAuthSession,
   getOrCreateGuestKey,
-  getStoredAccessToken,
   getStoredGuestKey,
 } from "@/utils/storage/clientState";
 
 export type ApiAuthMode = "none" | "member" | "guest" | "optional";
 
 export interface ApiRequestOptions extends RequestInit {
-  accessToken?: string | null;
   guestKey?: string | null;
   authMode?: ApiAuthMode;
+  notifyOnAuthError?: boolean;
 }
 
 export async function apiRequest<T>(path: string, init: ApiRequestOptions = {}): Promise<T> {
-  const { accessToken, guestKey, authMode = "none", headers, ...requestInit } = init;
-  let resolvedAccessToken: string | null = null;
+  const { guestKey, authMode = "none", headers, notifyOnAuthError = true, ...requestInit } = init;
   let resolvedGuestKey: string | null = null;
-
-  if (authMode === "member") {
-    resolvedAccessToken = accessToken ?? getStoredAccessToken();
-    if (!resolvedAccessToken) {
-      throw new ApiError("로그인이 필요합니다.", 401, "UNAUTHORIZED");
-    }
-  }
 
   if (authMode === "guest") {
     resolvedGuestKey = guestKey ?? getOrCreateGuestKey();
   }
 
   if (authMode === "optional") {
-    resolvedAccessToken = accessToken ?? getStoredAccessToken();
-    resolvedGuestKey = resolvedAccessToken ? null : guestKey ?? getStoredGuestKey();
+    resolvedGuestKey = guestKey ?? getStoredGuestKey();
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...requestInit,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(resolvedAccessToken ? { Authorization: `Bearer ${resolvedAccessToken}` } : {}),
       ...(resolvedGuestKey ? { "X-Guest-Key": resolvedGuestKey } : {}),
       ...headers,
     },
@@ -61,7 +51,7 @@ export async function apiRequest<T>(path: string, init: ApiRequestOptions = {}):
       body,
     );
 
-    if (resolvedAccessToken && isAuthExpiredError(error)) {
+    if (notifyOnAuthError && authMode === "member" && isAuthExpiredError(error)) {
       clearAuthSession();
       notifyAuthExpired();
     }

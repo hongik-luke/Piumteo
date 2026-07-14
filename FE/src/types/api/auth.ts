@@ -26,7 +26,12 @@ export interface AuthResponse {
   email: string;
   nickname: string;
   role: UserRole;
-  accessToken: string | null;
+}
+
+export interface CurrentUserResponse {
+  userId: Id;
+  nickname: string;
+  userRole: UserRole;
 }
 
 export interface DuplicateCheckResponse {
