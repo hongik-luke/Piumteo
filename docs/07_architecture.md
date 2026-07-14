@@ -42,11 +42,11 @@ com.piumteo.server
 
 ## 인증 구조
 
-- 로그인 성공 시 JWT Access Token을 발급한다.
-- 이후 회원 API는 `Authorization: Bearer {accessToken}`을 사용한다.
+- 로그인 성공 시 JWT Access Token을 HttpOnly `accessToken` Cookie로 발급한다.
+- 이후 회원 API는 HttpOnly `accessToken` Cookie를 사용한다.
 - 서버는 세션을 저장하지 않는다.
-- 로그아웃은 프론트엔드 accessToken 삭제로 처리한다.
-- 잘못된 Bearer token은 401로 처리한다.
+- 로그아웃은 서버 API에서 HttpOnly accessToken Cookie를 만료시킨다.
+- 잘못된 또는 만료된 accessToken Cookie는 인증 필요 API에서 401로 처리한다.
 
 ## 장소 조회 구조
 

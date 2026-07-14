@@ -9,10 +9,10 @@ import com.piumteo.server.global.security.exception.SecurityBusinessException;
 import com.piumteo.server.global.security.exception.SecurityErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,8 +27,6 @@ import java.nio.charset.StandardCharsets;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
-
-    private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService userDetailsService;
@@ -94,13 +92,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     private String resolveToken(HttpServletRequest request) {
-        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-
-        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
             return null;
         }
 
-        return authorization.substring(BEARER_PREFIX.length());
+        for (Cookie cookie : cookies) {
+            if (AuthCookieService.ACCESS_TOKEN_COOKIE_NAME.equals(cookie.getName())) {
+                String token = cookie.getValue();
+                return token == null || token.isBlank() ? null : token;
+            }
+        }
+
+        return null;
     }
 
     private boolean isPermitAllRequest(HttpServletRequest request) {
@@ -109,6 +113,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (path.equals("/api/auth/signup")
                 || path.equals("/api/auth/login")
+                || path.equals("/api/auth/logout")
                 || path.equals("/api/auth/check-email")
                 || path.equals("/api/auth/check-nickname")
                 || path.equals("/swagger-ui.html")

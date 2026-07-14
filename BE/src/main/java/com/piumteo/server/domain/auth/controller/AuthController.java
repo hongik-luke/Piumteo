@@ -1,15 +1,21 @@
                                                                                                    package com.piumteo.server.domain.auth.controller;
 
 import com.piumteo.server.domain.auth.dto.AuthResponse;
+import com.piumteo.server.domain.auth.dto.CurrentUserResponse;
 import com.piumteo.server.domain.auth.dto.DuplicateCheckResponse;
+import com.piumteo.server.domain.auth.dto.LoginResult;
 import com.piumteo.server.domain.auth.dto.LoginRequest;
 import com.piumteo.server.domain.auth.dto.SignupRequest;
 import com.piumteo.server.domain.auth.exception.AuthCode;
 import com.piumteo.server.domain.auth.service.AuthService;
 import com.piumteo.server.global.response.ApiResponse;
+import com.piumteo.server.global.security.CurrentUser;
+import com.piumteo.server.global.security.CustomUserDetails;
+import com.piumteo.server.global.security.jwt.AuthCookieService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -35,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthCookieService authCookieService;
 
     @Operation(
             summary = "회원가입",
@@ -44,7 +51,7 @@ public class AuthController {
                     - Authorization 헤더 없이 호출합니다.
                     - 이메일과 닉네임은 각각 중복될 수 없습니다.
                     - 비밀번호는 서버에서 BCrypt로 해시 처리하여 저장합니다.
-                    - 회원가입 응답의 accessToken은 null입니다. 가입 후 로그인을 호출해 토큰을 발급받습니다.
+                    - 회원가입은 로그인 쿠키를 발급하지 않습니다. 가입 후 로그인을 호출합니다.
                     """
     )
     @PostMapping("/signup")
@@ -64,25 +71,61 @@ public class AuthController {
     @Operation(
             summary = "로그인",
             description = """
-                    이메일과 비밀번호를 검증한 뒤 JWT Access Token을 발급합니다.
+                    이메일과 비밀번호를 검증한 뒤 JWT Access Token을 HttpOnly Cookie로 발급합니다.
                     
-                    - Authorization 헤더 없이 호출합니다.
-                    - 성공 시 응답의 accessToken 값을 이후 요청의 Authorization 헤더에 사용합니다.
-                    - 이후 인증 요청 형식은 Authorization: Bearer {accessToken} 입니다.
+                    - 성공 시 accessToken Cookie가 Set-Cookie로 내려갑니다.
+                    - 응답 body에는 Access Token을 포함하지 않습니다.
+                    - 이후 인증 요청은 브라우저가 Cookie를 자동 포함합니다.
                     """
     )
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @Valid @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse servletResponse
     ) {
-        AuthResponse response = authService.login(request);
+        LoginResult result = authService.login(request);
+        authCookieService.addAccessTokenCookie(servletResponse, result.accessToken());
 
         return ResponseEntity
                 .status(AuthCode.LOGIN_SUCCESS.getHttpStatus())
                 .body(ApiResponse.onSuccess(
                         AuthCode.LOGIN_SUCCESS,
-                        response
+                        result.response()
                 ));
+    }
+
+    @Operation(
+            summary = "현재 로그인한 회원 조회",
+            description = "HttpOnly accessToken Cookie를 기준으로 현재 로그인한 회원의 최소 정보를 반환합니다."
+    )
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<CurrentUserResponse>> me(
+            @CurrentUser CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.onSuccess(
+                        AuthCode.LOGIN_SUCCESS,
+                        CurrentUserResponse.from(userDetails)
+                )
+        );
+    }
+
+    @Operation(
+            summary = "로그아웃",
+            description = "HttpOnly accessToken Cookie를 즉시 만료시킵니다."
+    )
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            HttpServletResponse servletResponse
+    ) {
+        authCookieService.expireAccessTokenCookie(servletResponse);
+
+        return ResponseEntity.ok(
+                ApiResponse.onSuccess(
+                        AuthCode.LOGIN_SUCCESS,
+                        null
+                )
+        );
     }
 
     @Operation(

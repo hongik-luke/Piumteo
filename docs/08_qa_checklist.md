@@ -4,7 +4,7 @@
 
 - Swagger UI에서 모든 endpoint가 표시되는지 확인
 - 인증 필요 API에 토큰 없이 요청하면 401인지 확인
-- 잘못된 Bearer token이 있으면 비회원 처리하지 않고 401인지 확인
+- 잘못된 또는 만료된 accessToken Cookie가 있으면 비회원 처리하지 않고 401인지 확인
 - validation 실패 시 400 응답인지 확인
 - 존재하지 않는 리소스 조회 시 404 응답인지 확인
 
@@ -14,11 +14,11 @@
 - `AUTH-002` 이메일 형식 오류로 회원가입 실패
 - `AUTH-003` 중복 이메일 회원가입 실패
 - `AUTH-004` 중복 닉네임 회원가입 실패
-- `AUTH-005` 로그인 성공 후 accessToken 응답
+- `AUTH-005` 로그인 성공 후 HttpOnly accessToken Cookie 발급
 - `AUTH-006` 잘못된 비밀번호 로그인 실패
 - `AUTH-007` 이메일 중복 확인 성공
 - `AUTH-008` 닉네임 중복 확인 성공
-- `AUTH-009` 로그아웃은 프론트에서 accessToken 삭제로 처리되는지 확인
+- `AUTH-009` 로그아웃은 서버 API에서 accessToken Cookie를 만료시키는지 확인
 
 ## Place Marker
 

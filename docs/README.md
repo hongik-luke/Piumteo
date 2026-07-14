@@ -4,8 +4,8 @@
 
 ## 현재 구현 상태
 
-- 인증: JWT Access Token 기반 로그인/회원가입 구현 완료
-- 로그아웃: 별도 API 없이 프론트엔드 저장소의 accessToken 삭제로 처리
+- 인증: JWT Access Token을 HttpOnly Cookie로 발급하는 로그인/회원가입 구현 완료
+- 로그아웃: 서버 API에서 HttpOnly Cookie를 만료시키는 방식으로 처리
 - 장소: 등록, 삭제, nearby 조회, bounds 조회, 상세 요약 조회 구현 완료
 - 댓글: 회원/비회원 목록, 작성, 수정, 삭제 구현 완료
 - 반응: 회원/비회원 좋아요, 싫어요, 취소 처리 구현 완료
@@ -15,6 +15,7 @@
 
 | 문서 | 내용 |
 | --- | --- |
+| `DECISIONS.md` | 현재 MVP 정책과 운영 기준 |
 | `00_project_memory.md` | 프로젝트 핵심 기억과 고정 결정 |
 | `01_mvp_scope.md` | MVP 범위 |
 | `02_permissions_policy.md` | 사용자/권한 정책 |
@@ -30,7 +31,7 @@
 ## 구현 기준 요약
 
 - API base path는 `/api`다.
-- 회원 인증은 `Authorization: Bearer {accessToken}` 헤더를 사용한다.
+- 회원 인증은 HttpOnly `accessToken` Cookie를 사용한다.
 - 비회원 반응은 프론트엔드가 생성한 `X-Guest-Key` 헤더를 사용한다.
 - 댓글 API와 반응 API는 회원/비회원 경로를 분리한다.
 - 장소 삭제는 장소, 해당 장소의 댓글, 해당 장소의 반응을 모두 hard delete한다.

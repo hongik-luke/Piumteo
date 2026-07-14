@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { getCurrentUser, logout as logoutApi } from "@/apis/auth/auth.api";
 import { AUTH_EXPIRED_EVENT } from "@/app/authEvents";
 import { AppLayout } from "@/app/AppLayout";
 import type { Screen } from "@/app/screen";
@@ -10,16 +11,15 @@ import { SignupScreen } from "@/pages/signup/SignupPage";
 import type { AuthSession, ToastItem, ToastType } from "@/types/domain";
 import {
   clearAuthSession,
-  getStoredAuthSession,
   getStoredLocationConsent,
-  saveAuthSession,
   saveLocationConsent,
 } from "@/utils/storage/clientState";
+import { currentUserResponseToSession } from "@/utils/mappers/auth.mapper";
 import { uid } from "@/utils/uid";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("map");
-  const [authSession, setAuthSession] = useState<AuthSession | null>(() => getStoredAuthSession());
+  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [locationConsent, setLocationConsent] = useState(() => getStoredLocationConsent());
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
@@ -38,6 +38,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    clearAuthSession();
+
+    getCurrentUser()
+      .then((response) => setAuthSession(currentUserResponseToSession(response)))
+      .catch(() => setAuthSession(null));
+  }, []);
+
+  useEffect(() => {
     function handleAuthExpired() {
       setAuthSession(null);
       setScreen("login");
@@ -50,25 +58,22 @@ export default function App() {
 
   function handleLogin(session: AuthSession) {
     setAuthSession(session);
-    saveAuthSession(session);
     setScreen("map");
     addToast("success", "로그인되었습니다. 환영합니다.");
   }
 
-  function handleSignup(session?: AuthSession) {
-    if (session) {
-      setAuthSession(session);
-      saveAuthSession(session);
-      setScreen("map");
-      addToast("success", "회원가입과 로그인이 완료되었습니다.");
-      return;
-    }
-
+  function handleSignup() {
     setScreen("login");
     addToast("success", "회원가입이 완료되었습니다. 로그인해 주세요.");
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      await logoutApi();
+    } catch {
+      addToast("warning", "서버 로그아웃 확인에 실패했지만, 이 기기에서는 로그아웃합니다.");
+    }
+
     setAuthSession(null);
     clearAuthSession();
     setScreen("map");

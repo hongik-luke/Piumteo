@@ -39,12 +39,6 @@ export function LoginScreen({ onLogin, onNavigate }: { onLogin(session: AuthSess
     try {
       const response = await login({ email: trimmedEmail, password: pw });
       const session = authResponseToSession(response);
-
-      if (!session) {
-        setError("로그인 응답에 필요한 정보가 없습니다. 다시 시도해 주세요.");
-        return;
-      }
-
       onLogin(session);
     } catch (loginError) {
       setError(toLoginError(loginError));

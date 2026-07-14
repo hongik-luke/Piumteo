@@ -1,4 +1,4 @@
-import type { AuthSession, LastMapView, LocationConsent } from "@/types/domain";
+import type { LastMapView, LocationConsent } from "@/types/domain";
 import { readStorageValue, removeStorageValue, writeStorageValue } from "./storage";
 
 const STORAGE_KEYS = {
@@ -20,39 +20,8 @@ function createUuid() {
   });
 }
 
-export function getStoredAuthSession() {
-  const session = readStorageValue<AuthSession | null>(STORAGE_KEYS.authSession, null);
-  if (!session?.accessToken) return null;
-
-  const sanitizedSession: AuthSession = {
-    userId: session.userId,
-    nickname: session.nickname,
-    role: session.role,
-    accessToken: session.accessToken,
-  };
-
-  if ("email" in session) {
-    writeStorageValue(STORAGE_KEYS.authSession, sanitizedSession);
-  }
-
-  return sanitizedSession;
-}
-
-export function saveAuthSession(session: AuthSession) {
-  writeStorageValue(STORAGE_KEYS.authSession, {
-    userId: session.userId,
-    nickname: session.nickname,
-    role: session.role,
-    accessToken: session.accessToken,
-  });
-}
-
 export function clearAuthSession() {
   removeStorageValue(STORAGE_KEYS.authSession);
-}
-
-export function getStoredAccessToken() {
-  return getStoredAuthSession()?.accessToken ?? null;
 }
 
 export function getStoredGuestKey() {

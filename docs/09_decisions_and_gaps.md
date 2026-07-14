@@ -1,5 +1,7 @@
 # 결정사항과 남은 확인사항
 
+> 현재 기준 문서는 `DECISIONS.md`다. 이 문서는 과거 결정과 남은 확인사항을 함께 담은 historical 문서이며, 충돌 시 `DECISIONS.md`와 현재 코드를 우선한다.
+
 ## 확정 결정
 
 ### Auth
@@ -7,9 +9,10 @@
 - 인증은 JWT Access Token 기반 stateless 방식이다.
 - 회원가입 API 경로는 `/api/auth/signup`이다.
 - 로그인 API 경로는 `/api/auth/login`이다.
-- 로그아웃 API는 MVP 단계에서 만들지 않는다.
-- 로그아웃은 프론트엔드가 저장한 accessToken을 삭제하는 방식으로 처리한다.
-- 잘못된 Bearer token은 비회원 처리하지 않고 401로 응답한다.
+- 로그인 성공 시 Access Token은 HttpOnly Cookie로 발급한다.
+- 현재 사용자 조회 API 경로는 `/api/auth/me`이다.
+- 로그아웃 API 경로는 `/api/auth/logout`이며 accessToken Cookie를 만료시킨다.
+- 잘못된 또는 만료된 accessToken Cookie는 인증 요청에서 401로 응답한다.
 
 ### Place
 
@@ -31,14 +34,14 @@
 
 - 댓글 수정 API는 포함한다.
 - 댓글 API는 회원/비회원 경로를 분리한다.
-- 회원 댓글은 `/comments/member` 경로와 JWT 인증을 사용한다.
+- 회원 댓글은 `/comments/member` 경로와 HttpOnly Cookie 인증을 사용한다.
 - 비회원 댓글은 `/comments/guest` 경로와 `guestPassword`를 사용한다.
 - 개별 댓글 삭제는 soft delete다.
 
 ### Reaction
 
 - 반응 API는 회원/비회원 경로를 분리한다.
-- 회원 반응은 `/reaction/member` 경로와 JWT 인증을 사용한다.
+- 회원 반응은 `/reaction/member` 경로와 HttpOnly Cookie 인증을 사용한다.
 - 비회원 반응은 `/reaction/guest` 경로와 `X-Guest-Key`를 사용한다.
 - `X-Guest-Key`는 프론트엔드가 생성하고 서버는 SHA-256 해시만 저장한다.
 - 반응 상태는 `LIKE`, `DISLIKE`, `CANCELED`만 사용한다.
@@ -54,7 +57,7 @@
 
 현재 합의 기준 구현 API는 18개다.
 
-- Auth: 4개
+- Auth: 6개
 - Place: 5개
 - Comment: 7개
 - Reaction: 2개

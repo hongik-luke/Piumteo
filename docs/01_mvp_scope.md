@@ -13,7 +13,7 @@
 - 이메일 중복 확인
 - 닉네임 중복 확인
 - JWT Access Token 인증
-- 로그아웃은 프론트엔드 accessToken 삭제로 처리
+- 로그아웃은 서버 API에서 HttpOnly accessToken Cookie 만료로 처리
 
 ### 장소
 

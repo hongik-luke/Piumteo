@@ -29,6 +29,11 @@ jwt:
     expiration:
       access: 3600000
 
+auth:
+  cookie:
+    secure: false
+    same-site: Lax
+
 management:
   endpoints:
     web:

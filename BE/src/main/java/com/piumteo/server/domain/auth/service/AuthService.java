@@ -1,6 +1,7 @@
 package com.piumteo.server.domain.auth.service;
 
 import com.piumteo.server.domain.auth.dto.AuthResponse;
+import com.piumteo.server.domain.auth.dto.LoginResult;
 import com.piumteo.server.domain.auth.dto.DuplicateCheckResponse;
 import com.piumteo.server.domain.auth.dto.LoginRequest;
 import com.piumteo.server.domain.auth.dto.SignupRequest;
@@ -41,10 +42,10 @@ public class AuthService {
                 )
         );
 
-        return AuthResponse.from(user, null);
+        return AuthResponse.from(user);
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         User user = userRepository.findByEmailAndStatusAndDeletedAtIsNull(
                         request.email(),
                         UserStatus.ACTIVE
@@ -57,7 +58,7 @@ public class AuthService {
 
         String accessToken = jwtUtil.createAccessToken(new CustomUserDetails(user));
 
-        return AuthResponse.from(user, accessToken);
+        return new LoginResult(AuthResponse.from(user), accessToken);
     }
 
     public DuplicateCheckResponse checkEmail(String email) {

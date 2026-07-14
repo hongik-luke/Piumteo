@@ -148,7 +148,7 @@ export function PlaceDetailSheet({
                 currentReaction={currentReaction}
                 likeCount={likeCount}
                 dislikeCount={dislikeCount}
-                loading={reactionLoading}
+                reactionLoading={reactionLoading}
                 onReact={handleReact}
               />
               <PlaceActionBar

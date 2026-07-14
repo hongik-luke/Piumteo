@@ -4,6 +4,7 @@ import type {
   AuthResponse,
   CheckEmailRequest,
   CheckNicknameRequest,
+  CurrentUserResponse,
   DuplicateCheckResponse,
   LoginRequest,
   SignupRequest,
@@ -22,6 +23,20 @@ export function login(body: LoginRequest) {
     authMode: "none",
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export function getCurrentUser() {
+  return apiRequest<CurrentUserResponse>(API_ENDPOINTS.auth.me, {
+    authMode: "member",
+    notifyOnAuthError: false,
+  });
+}
+
+export function logout() {
+  return apiRequest<null>(API_ENDPOINTS.auth.logout, {
+    authMode: "none",
+    method: "POST",
   });
 }
 

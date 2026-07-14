@@ -143,12 +143,11 @@ public class PlaceController {
                     마커 클릭 시 바텀시트에 표시할 장소 상세 요약 정보를 조회합니다.
                     
                     - 조회 성공 시 viewCount가 1 증가합니다.
-                    - 로그인 사용자는 Authorization: Bearer {accessToken} 기준으로 isOwner와 myReactionType을 계산합니다.
+                    - 로그인 사용자는 HttpOnly accessToken Cookie 기준으로 isOwner와 myReactionType을 계산합니다.
                     - 비회원은 X-Guest-Key가 있으면 현재 시간대 myReactionType을 계산합니다.
-                    - Authorization과 X-Guest-Key가 모두 없으면 myReactionType은 CANCELED로 응답합니다.
-                    - 로그인 사용자의 myReactionType을 확인하려면 Swagger Authorize에 accessToken을 입력한 뒤 호출해야 합니다.
+                    - accessToken Cookie와 X-Guest-Key가 모두 없으면 myReactionType은 CANCELED로 응답합니다.
                     """,
-            security = @SecurityRequirement(name = "bearerAuth")
+            security = @SecurityRequirement(name = "cookieAuth")
     )
     @GetMapping("/{placeId}/summary")
     public ResponseEntity<ApiResponse<PlaceDetailResponse>> getPlaceSummary(
@@ -189,12 +188,12 @@ public class PlaceController {
             description = """
                     로그인한 회원이 지도 중앙 핀 좌표 기준으로 장소를 등록합니다.
                     
-                    - Authorization: Bearer {accessToken} 헤더가 필요합니다.
+                    - HttpOnly accessToken Cookie가 필요합니다.
                     - 요청 본문에 작성자 ID를 받지 않습니다.
                     - 서버가 JWT에서 추출한 현재 사용자 ID를 등록자로 저장합니다.
                     - 요청 필드명은 placeName, placeType, latitude, longitude, locationDescription을 사용합니다.
                     """,
-            security = @SecurityRequirement(name = "bearerAuth")
+            security = @SecurityRequirement(name = "cookieAuth")
     )
     @PostMapping
     public ResponseEntity<ApiResponse<CreatePlaceResponse>> createPlace(
@@ -219,11 +218,11 @@ public class PlaceController {
             description = """
                     로그인한 회원이 본인이 등록한 장소를 삭제합니다.
                     
-                    - Authorization: Bearer {accessToken} 헤더가 필요합니다.
+                    - HttpOnly accessToken Cookie가 필요합니다.
                     - 장소 등록자 본인만 삭제할 수 있습니다.
                     - 장소와 해당 장소의 댓글, 반응을 모두 hard delete합니다.
                     """,
-            security = @SecurityRequirement(name = "bearerAuth")
+            security = @SecurityRequirement(name = "cookieAuth")
     )
     @DeleteMapping("/{placeId}")
     public ResponseEntity<ApiResponse<Void>> deletePlace(

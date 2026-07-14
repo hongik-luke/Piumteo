@@ -5,8 +5,6 @@ import { checkEmail as checkEmailApi, checkNickname as checkNicknameApi, signup 
 import { getApiErrorMessage } from "@/apis/client/errorMessage";
 import type { Screen } from "@/app/screen";
 import { AuthInput } from "@/components/auth/AuthInput";
-import type { AuthSession } from "@/types/domain";
-import { authResponseToSession } from "@/utils/mappers/auth.mapper";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NICKNAME_PATTERN = /^[가-힣a-zA-Z0-9]{2,12}$/;
@@ -15,7 +13,7 @@ function toSignupError(error: unknown) {
   return getApiErrorMessage(error, "잠시 후 다시 시도해 주세요.");
 }
 
-export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(session?: AuthSession): void; onNavigate(s: Screen): void }) {
+export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(): void; onNavigate(s: Screen): void }) {
   const [email, setEmail] = useState("");
   const [emailStatus, setEmailStatus] = useState<"ok" | "error" | null>(null);
   const [emailChecking, setEmailChecking] = useState(false);
@@ -106,12 +104,12 @@ export function SignupScreen({ onSuccess, onNavigate }: { onSuccess(session?: Au
     setError("");
 
     try {
-      const response = await signup({
+      await signup({
         email: trimmedEmail,
         password: pw,
         nickname: trimmedNick,
       });
-      onSuccess(authResponseToSession(response) ?? undefined);
+      onSuccess();
     } catch (signupError) {
       setError(toSignupError(signupError));
     } finally {

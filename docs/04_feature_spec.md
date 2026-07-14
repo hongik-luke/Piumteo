@@ -8,7 +8,7 @@
 | AUTH-02 | 로그인 | 비회원 | 이메일/비밀번호 검증 후 JWT Access Token 발급 |
 | AUTH-03 | 이메일 중복 확인 | 비회원 | 회원가입 전 이메일 사용 가능 여부 확인 |
 | AUTH-04 | 닉네임 중복 확인 | 비회원 | 회원가입 전 닉네임 사용 가능 여부 확인 |
-| AUTH-05 | 로그아웃 | 회원 | 별도 API 없이 프론트엔드 저장소의 accessToken 삭제 |
+| AUTH-05 | 로그아웃 | 회원 | 서버 API에서 HttpOnly accessToken Cookie 만료 |
 
 ## Place
 

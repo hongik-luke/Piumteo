@@ -45,8 +45,8 @@ public class CommentController {
                     - 첫 조회 시 cursorId는 전달하지 않습니다.
                     - 다음 페이지 조회 시 이전 응답의 nextCursor 값을 cursorId로 전달합니다.
                     - 댓글은 최신순으로 조회됩니다.
-                    - Authorization 헤더가 유효하면 현재 사용자가 작성한 회원 댓글에 isMine=true를 표시합니다.
-                    - Authorization 헤더가 없으면 비회원 조회로 처리하며 isMine은 false입니다.
+                    - HttpOnly accessToken Cookie가 유효하면 현재 사용자가 작성한 회원 댓글에 isMine=true를 표시합니다.
+                    - accessToken Cookie가 없으면 비회원 조회로 처리하며 isMine은 false입니다.
                     """
     )
     @GetMapping
@@ -96,11 +96,11 @@ public class CommentController {
             description = """
                     로그인한 회원이 특정 장소에 댓글을 작성합니다.
                     
-                    - Authorization: Bearer {accessToken} 헤더가 필요합니다.
+                    - HttpOnly accessToken Cookie가 필요합니다.
                     - 요청 본문에는 content만 전달합니다.
                     - displayNickname은 회원 닉네임을 복사하여 저장합니다.
                     """,
-            security = @SecurityRequirement(name = "bearerAuth")
+            security = @SecurityRequirement(name = "cookieAuth")
     )
     @PostMapping("/member")
     public ResponseEntity<ApiResponse<CommentMutationResponse>> createMemberComment(
@@ -134,7 +134,7 @@ public class CommentController {
             description = """
                     비회원 사용자가 특정 장소에 댓글을 작성합니다.
                     
-                    - Authorization 헤더 없이 호출합니다.
+                    - 로그인 Cookie 없이 호출할 수 있습니다.
                     - displayNickname, guestPassword, content가 필요합니다.
                     - guestPassword는 서버에서 해시 처리하여 저장합니다.
                     """
@@ -168,11 +168,11 @@ public class CommentController {
             description = """
                     로그인한 회원이 본인이 작성한 회원 댓글을 수정합니다.
                     
-                    - Authorization: Bearer {accessToken} 헤더가 필요합니다.
+                    - HttpOnly accessToken Cookie가 필요합니다.
                     - 요청 본문에는 content만 전달합니다.
                     - commentId가 placeId에 속한 댓글인지 함께 검증합니다.
                     """,
-            security = @SecurityRequirement(name = "bearerAuth")
+            security = @SecurityRequirement(name = "cookieAuth")
     )
     @PatchMapping("/member/{commentId}")
     public ResponseEntity<ApiResponse<CommentMutationResponse>> updateMemberComment(
@@ -214,7 +214,7 @@ public class CommentController {
             description = """
                     비회원 댓글을 작성 시 입력한 비밀번호로 수정합니다.
                     
-                    - Authorization 헤더 없이 호출합니다.
+                    - 로그인 Cookie 없이 호출할 수 있습니다.
                     - guestPassword가 기존 댓글 비밀번호와 일치해야 수정할 수 있습니다.
                     - commentId가 placeId에 속한 댓글인지 함께 검증합니다.
                     """
@@ -256,11 +256,11 @@ public class CommentController {
             description = """
                     로그인한 회원이 본인이 작성한 회원 댓글을 삭제합니다.
                     
-                    - Authorization: Bearer {accessToken} 헤더가 필요합니다.
+                    - HttpOnly accessToken Cookie가 필요합니다.
                     - 실제 DB row를 제거하지 않고 deletedAt을 채우는 soft delete 방식입니다.
                     - commentId가 placeId에 속한 댓글인지 함께 검증합니다.
                     """,
-            security = @SecurityRequirement(name = "bearerAuth")
+            security = @SecurityRequirement(name = "cookieAuth")
     )
     @DeleteMapping("/member/{commentId}")
     public ResponseEntity<ApiResponse<Void>> deleteMemberComment(
@@ -299,7 +299,7 @@ public class CommentController {
             description = """
                     비회원 댓글을 작성 시 입력한 비밀번호로 삭제합니다.
                     
-                    - Authorization 헤더 없이 호출합니다.
+                    - 로그인 Cookie 없이 호출할 수 있습니다.
                     - guestPassword가 기존 댓글 비밀번호와 일치해야 삭제할 수 있습니다.
                     - 실제 DB row를 제거하지 않고 deletedAt을 채우는 soft delete 방식입니다.
                     - commentId가 placeId에 속한 댓글인지 함께 검증합니다.

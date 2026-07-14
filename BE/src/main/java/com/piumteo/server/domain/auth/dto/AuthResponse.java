@@ -15,22 +15,15 @@ public record AuthResponse(
         String nickname,
 
         @Schema(description = "회원 권한", example = "MEMBER")
-        String role,
-
-        @Schema(description = "JWT Access Token. 회원가입 응답에서는 null이고 로그인 응답에서 발급됩니다.")
-        String accessToken
+        String role
 ) {
 
-    public static AuthResponse from(
-            User user,
-            String accessToken
-    ) {
+    public static AuthResponse from(User user) {
         return new AuthResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
-                user.getRole().name(),
-                accessToken
+                user.getRole().name()
         );
     }
 }

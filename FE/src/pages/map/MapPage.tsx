@@ -235,7 +235,6 @@ export function MapScreen({
   const handleMarkerClick = useCallback(
     async (placeId: number) => {
       const marker = placeMarkers.find((item) => item.placeId === placeId);
-      const memberToken = authSession?.accessToken ?? null;
 
       if (marker) setSelected(markerToPlace(marker));
       setShowSearch(false);
@@ -245,8 +244,7 @@ export function MapScreen({
         const detail = await getPlaceSummary(
           { placeId },
           {
-            accessToken: memberToken,
-            authMode: memberToken ? "member" : "optional",
+            authMode: isLoggedIn ? "member" : "optional",
           },
         );
         setSelected(detailToPlace(detail));
@@ -258,7 +256,7 @@ export function MapScreen({
         addToast("warning", "장소 상세 정보를 불러오지 못했습니다.");
       }
     },
-    [addToast, authSession, placeMarkers],
+    [addToast, isLoggedIn, placeMarkers],
   );
 
   const rememberCurrentMapView = useCallback((nextCenter?: MapLatLng) => {
@@ -484,7 +482,7 @@ export function MapScreen({
                     >
                       <div className="px-4 py-3.5 border-b border-gray-100">
                         <p className="text-xs font-bold text-gray-900 truncate">{authSession?.nickname ?? "회원"}</p>
-                        <p className="mt-0.5 text-[11px] text-gray-500 truncate">{authSession?.email ?? ""}</p>
+                        <p className="mt-0.5 text-[11px] text-gray-500 truncate">{authSession?.role ?? "MEMBER"}</p>
                       </div>
                       <button
                         onClick={() => {

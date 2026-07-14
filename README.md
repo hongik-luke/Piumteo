@@ -22,7 +22,7 @@ Piumteo/
 - 현재 위치 또는 지도 영역 기준 장소 검색
 - 회원/비회원 댓글 작성 및 관리
 - 회원/비회원 좋아요, 싫어요 반응
-- JWT Access Token 기반 회원 인증
+- HttpOnly Cookie 기반 JWT Access Token 회원 인증
 - Swagger/OpenAPI 기반 API 문서화
 
 ## 기술 스택

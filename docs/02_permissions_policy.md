@@ -10,12 +10,12 @@
 
 ## 인증 정책
 
-- 회원 API는 `Authorization: Bearer {accessToken}` 헤더가 필요하다.
+- 회원 API는 HttpOnly `accessToken` Cookie가 필요하다.
 - 서버는 JWT를 검증하고 현재 사용자 ID를 추출한다.
 - 토큰이 없으면 비회원 요청으로 처리 가능한 API만 사용할 수 있다.
 - 토큰이 존재하지만 잘못되었으면 비회원으로 조용히 처리하지 않고 401로 응답한다.
 - 서버는 로그인 세션을 저장하지 않는다.
-- 로그아웃은 프론트엔드가 저장한 accessToken을 삭제하는 방식으로 처리한다.
+- 로그아웃은 서버 API에서 HttpOnly accessToken Cookie를 만료시키는 방식으로 처리한다.
 
 ## 장소 권한
 
