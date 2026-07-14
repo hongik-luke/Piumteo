@@ -9,7 +9,7 @@
 - Spring Boot 3 기반 REST API 서버다.
 - 인증은 JWT Access Token 기반 stateless 구조다.
 - 서버는 로그인 세션을 저장하지 않는다.
-- 로그아웃은 별도 API 없이 프론트엔드가 저장한 accessToken을 삭제한다.
+- 로그아웃은 `POST /api/auth/logout`에서 HttpOnly accessToken Cookie를 만료시킨다.
 - Swagger/OpenAPI 문서를 사용한다.
 - PostgreSQL과 PostGIS를 사용한다.
 

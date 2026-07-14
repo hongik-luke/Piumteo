@@ -19,7 +19,7 @@
 
 ```http
 PUT /api/places/{placeId}/reaction/member
-Authorization: Bearer {accessToken}
+Cookie: accessToken={HttpOnly JWT}
 ```
 
 비회원:

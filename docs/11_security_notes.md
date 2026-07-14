@@ -2,23 +2,19 @@
 
 ## Current Auth Model
 
-- The current backend auth contract is `Authorization: Bearer {accessToken}`.
-- The frontend stores the access token in localStorage for now.
-- This is intentionally not converted to HttpOnly cookie auth in the current MVP scope.
+- The current backend auth contract is an `accessToken` HttpOnly Cookie.
+- The frontend must not store or read the JWT access token.
+- The frontend includes cookies on API requests through the shared API client.
 
 ## LocalStorage Policy
 
-- Persist only the values needed to restore the logged-in client state:
-  - `userId`
-  - `nickname`
-  - `role`
-  - `accessToken`
-- Do not persist email, password, raw API responses, or debug data.
-- Remove the stored auth session on logout and on API auth-expired events.
+- Do not persist access tokens in localStorage or sessionStorage.
+- Non-sensitive UI preferences such as guest key, location consent, and last map view may remain in localStorage.
+- Restore logged-in state with `GET /api/auth/me`.
 
 ## XSS Guardrails
 
-- Do not log `accessToken`, `Authorization`, or raw auth responses.
+- Do not log `accessToken`, Cookie headers, Authorization headers, or raw auth responses.
 - Do not use `dangerouslySetInnerHTML` for comments, place names, descriptions, nicknames, or server messages.
 - Render user-generated text as React text nodes so it is escaped by React.
 - Avoid adding third-party scripts outside the explicit map SDK and build tooling needs.

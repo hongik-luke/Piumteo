@@ -4,12 +4,12 @@
 
 - Base path는 `/api`다.
 - 응답 wrapper는 `ApiResponse<T>` 형식을 사용한다.
-- 회원 인증은 `Authorization: Bearer {accessToken}` 헤더를 사용한다.
+- 회원 인증은 `accessToken` HttpOnly Cookie를 사용한다.
 - 서버는 JWT 기반 stateless 인증을 사용한다.
-- 로그아웃 API는 MVP 단계에서 만들지 않는다.
-- 로그아웃은 프론트엔드가 localStorage, sessionStorage, cookie 등에 저장한 `accessToken`을 삭제하는 방식으로 처리한다.
+- 로그인 성공 시 Access Token은 응답 body가 아니라 `Set-Cookie`로 전달된다.
+- 로그아웃은 `POST /api/auth/logout`에서 `accessToken` Cookie를 만료시키는 방식으로 처리한다.
 - 비회원 반응은 `X-Guest-Key` 헤더를 사용한다.
-- 잘못된 Bearer token이 있으면 비회원 처리하지 않고 401로 응답한다.
+- 잘못된 또는 만료된 accessToken Cookie가 인증 API에 사용되면 401로 응답한다.
 
 ## Endpoint 목록
 
@@ -17,11 +17,13 @@
 | --- | --- | --- | --- | --- |
 | 회원가입 | `POST` | `/api/auth/signup` | 비회원 | Body: `email`, `password`, `nickname` |
 | 로그인 | `POST` | `/api/auth/login` | 비회원 | Body: `email`, `password` |
+| 현재 사용자 조회 | `GET` | `/api/auth/me` | 회원 | Cookie: `accessToken` |
+| 로그아웃 | `POST` | `/api/auth/logout` | 전체 | Cookie 만료 |
 | 이메일 중복 확인 | `GET` | `/api/auth/check-email` | 비회원 | Query: `email` |
 | 닉네임 중복 확인 | `GET` | `/api/auth/check-nickname` | 비회원 | Query: `nickname` |
 | 현재 위치 기준 주변 장소 조회 | `GET` | `/api/places/nearby` | 전체 | Query: `lat`, `lng` |
 | 지도 bounds 기준 장소 조회 | `GET` | `/api/places/bounds` | 전체 | Query: `minLat`, `minLng`, `maxLat`, `maxLng` |
-| 장소 상세 요약 조회 | `GET` | `/api/places/{placeId}/summary` | 전체 | Path: `placeId`, optional `Authorization`, optional `X-Guest-Key` |
+| 장소 상세 요약 조회 | `GET` | `/api/places/{placeId}/summary` | 전체 | Path: `placeId`, optional Cookie, optional `X-Guest-Key` |
 | 장소 등록 | `POST` | `/api/places` | 회원 | Body: `placeName`, `placeType`, `latitude`, `longitude`, `locationDescription` |
 | 장소 삭제 | `DELETE` | `/api/places/{placeId}` | 회원 | Path: `placeId` |
 | 댓글 목록 조회 | `GET` | `/api/places/{placeId}/comments` | 전체 | Path: `placeId`, Query: `cursorId`, `size` |
@@ -34,7 +36,7 @@
 | 회원 좋아요/싫어요/취소 처리 | `PUT` | `/api/places/{placeId}/reaction/member` | 회원 | Body: `reactionType` |
 | 비회원 좋아요/싫어요/취소 처리 | `PUT` | `/api/places/{placeId}/reaction/guest` | 비회원 | Header: `X-Guest-Key`, Body: `reactionType` |
 
-현재 구현 기준 API 수는 18개다.
+현재 구현 기준 API 수는 20개다.
 
 ## Auth
 
@@ -50,7 +52,7 @@
 }
 ```
 
-응답은 사용자 기본 정보와 `accessToken: null`을 포함한다. 회원가입 직후 자동 로그인은 하지 않는다.
+응답은 사용자 기본 정보를 포함한다. 회원가입 직후 자동 로그인은 하지 않는다.
 
 ### `POST /api/auth/login`
 
@@ -63,11 +65,19 @@
 }
 ```
 
-응답은 JWT Access Token을 포함한다. 이후 회원 API 요청에는 아래 헤더를 사용한다.
+응답 body에는 JWT Access Token을 포함하지 않는다. 성공 시 `accessToken` HttpOnly Cookie를 발급한다.
 
 ```http
-Authorization: Bearer {accessToken}
+Set-Cookie: accessToken=...; HttpOnly; Path=/; SameSite=Lax
 ```
+
+### `GET /api/auth/me`
+
+HttpOnly `accessToken` Cookie를 기준으로 현재 로그인한 사용자의 최소 정보를 조회한다.
+
+### `POST /api/auth/logout`
+
+`accessToken` Cookie를 즉시 만료시킨다.
 
 ## Place Marker
 
@@ -149,9 +159,9 @@ nearby/bounds 공통 응답:
 정책:
 
 - 조회 성공 시 `viewCount`가 1 증가한다.
-- 회원은 Authorization 기준으로 `isOwner`, `myReactionType`을 계산한다.
+- 회원은 HttpOnly accessToken Cookie 기준으로 `isOwner`, `myReactionType`을 계산한다.
 - 비회원은 `X-Guest-Key`가 있으면 현재 시간대의 비회원 반응 상태를 계산한다.
-- 회원 반응 후 summary에서 `myReactionType`을 확인하려면 summary 요청에도 `Authorization: Bearer {accessToken}`이 필요하다.
+- 회원 반응 후 summary에서 `myReactionType`을 확인하려면 summary 요청에도 accessToken Cookie가 필요하다.
 - 비회원 반응 후 summary에서 `myReactionType`을 확인하려면 summary 요청에도 같은 `X-Guest-Key`가 필요하다.
 
 ## Place Mutation
