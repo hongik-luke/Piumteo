@@ -1,0 +1,75 @@
+name: BE CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "BE/**"
+      - ".github/workflows/be-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "BE/**"
+      - ".github/workflows/be-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  be-clean-build:
+    name: BE Clean Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: piumteo
+          POSTGRES_USER: piumteo
+          POSTGRES_PASSWORD: piumteo-ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U piumteo -d piumteo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: BE
+
+    env:
+      SPRING_PROFILES_ACTIVE: local
+      LOCAL_SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/piumteo
+      LOCAL_SPRING_DATASOURCE_USERNAME: piumteo
+      LOCAL_SPRING_DATASOURCE_PASSWORD: piumteo-ci-password
+      JWT_SECRET_KEY: piumteo-ci-only-jwt-secret-key-at-least-32-chars
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Clean build
+        run: ./gradlew clean build --no-daemon

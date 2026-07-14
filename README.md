@@ -1,5 +1,8 @@
 # 피움터(Piumteo)
 
+[![FE CI](https://github.com/hongik-luke/Piumteo/actions/workflows/fe-ci.yml/badge.svg?branch=main)](https://github.com/hongik-luke/Piumteo/actions/workflows/fe-ci.yml)
+[![BE CI](https://github.com/hongik-luke/Piumteo/actions/workflows/be-ci.yml/badge.svg?branch=main)](https://github.com/hongik-luke/Piumteo/actions/workflows/be-ci.yml)
+
 피움터는 지도 기반 흡연 장소 정보 공유 서비스입니다. 사용자는 현재 위치나 지도 화면을 기준으로 주변 흡연 장소를 찾고, 장소 상세 정보와 댓글, 좋아요/싫어요 반응을 통해 장소 정보를 함께 보완할 수 있습니다.
 
 회원은 JWT 기반 인증으로 로그인해 장소, 댓글, 반응 기능을 사용할 수 있으며, 일부 기능은 비회원 흐름도 함께 지원합니다.
