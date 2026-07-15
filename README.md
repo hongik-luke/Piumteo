@@ -7,6 +7,7 @@
 
 회원은 JWT 기반 인증으로 로그인해 장소, 댓글, 반응 기능을 사용할 수 있으며, 일부 기능은 비회원 흐름도 함께 지원합니다.
 
+노션 링크 :[노션 링크]( https://familiar-entrance-d6a.notion.site/About-Me-2017e261149d80aea8b4f6aa71f773ee?p=39d7e261149d802f93c1e1b0d6abbfbe&pm=c)
 ## 프로젝트 구조
 
 ```text
